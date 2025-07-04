@@ -9,12 +9,12 @@ const routes = [
     name: 'home',
     component: HomeView
   },
-  // **** ESTE BLOCO FOI REMOVIDO ****
-  // {
-  //   path: '/about',
-  //   name: 'about',
-  //   component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
-  // }
+{
+    path: '/mesa/:mesaId', // <-- ADICIONE/MODIFIQUE ESTA LINHA!
+    name: 'mesaDetail',    // Nome da rota, pode ser qualquer um
+    component: HomeView,   // O componente que esta rota vai carregar
+    props: true            // Isso permite que 'mesaId' seja passado como prop para HomeView (mesmo não sendo usado agora, é boa prática)
+  },
   // **********************************
   {
     path: '/waiter-calls',

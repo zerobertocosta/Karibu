@@ -53,7 +53,7 @@ export default {
   name: 'FinalizarPedidoModal',
   props: {
     pedidoId: {
-      type: Number,
+      type: [Number,null],
       required: true
     },
     pedidoTotal: {

@@ -1,6 +1,6 @@
 # pedidos/views.py
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import action, api_view # Adicione esta importação
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db import transaction
@@ -9,12 +9,9 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 
 from .models import Mesa, ItemCardapio, Pedido, ItemPedido, EnvioCozinha
-#from .serializers import MesaSerializer, ItemCardapioSerializer, PedidoSerializer, ItemPedidoSerializer
-#
-from .serializers import ItemCardapioSerializer, PedidoSerializer, ItemPedidoSerializer
-from mesa.serializers import MesaSerializer # <--- CORRIGIDO AQUI
-from cardapio.serializers import ItemCardapioSerializer # <--- CORRIGIDO AQUI
-
+from mesa.serializers import MesaSerializer
+from cardapio.serializers import ItemCardapioSerializer
+from .serializers import ItemCardapioSerializer, PedidoSerializer, ItemPedidoSerializer # Mantenha PedidoSerializer
 
 class MesaViewSet(viewsets.ModelViewSet):
     queryset = Mesa.objects.all()
@@ -28,21 +25,44 @@ class PedidoViewSet(viewsets.ModelViewSet):
     queryset = Pedido.objects.all()
     serializer_class = PedidoSerializer
 
+    # >>> ADICIONE ESTE BLOCO AQUI DENTRO DE PedidoViewSet <<<
+    @action(detail=False, methods=['get'], url_path='aberto/mesa/(?P<mesa_numero>[0-9]+)')
+    def aberto_por_mesa(self, request, mesa_numero=None):
+        """
+        Retorna o pedido aberto para uma mesa específica.
+        """
+        if not mesa_numero:
+            return Response({'detail': 'Número da mesa é obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            pedido = Pedido.objects.get(mesa__numero=mesa_numero, status='aberto')
+            serializer = self.get_serializer(pedido)
+            return Response(serializer.data)
+        except Pedido.DoesNotExist:
+            return Response({'detail': 'Nenhum pedido aberto encontrado para esta mesa.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({'detail': f'Ocorreu um erro interno: {e}'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    # >>> FIM DO BLOCO ADICIONADO <<<
+
 class ItemPedidoViewSet(viewsets.ModelViewSet):
     queryset = ItemPedido.objects.all()
     serializer_class = ItemPedidoSerializer
 
-@api_view(['GET'])
-def pedido_aberto_mesa(request, mesa_id):
-    try:
-        mesa = Mesa.objects.get(pk=mesa_id)
-        pedido = Pedido.objects.get(mesa=mesa, status='aberto')
-        serializer = PedidoSerializer(pedido)
-        return Response(serializer.data)
-    except Mesa.DoesNotExist:
-        return Response({"error": "Mesa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
-    except Pedido.DoesNotExist:
-        return Response({"error": "Nenhum pedido aberto encontrado para esta mesa."}, status=status.HTTP_404_NOT_FOUND)
+# >>> REMOVA A FUNÇÃO @api_view abaixo, pois ela foi substituída pela action <<<
+# @api_view(['GET'])
+# def pedido_aberto_mesa(request, mesa_id):
+#    try:
+#        mesa = Mesa.objects.get(pk=mesa_id)
+#        pedido = Pedido.objects.get(mesa=mesa, status='aberto')
+#        serializer = PedidoSerializer(pedido)
+#        return Response(serializer.data)
+#    except Mesa.DoesNotExist:
+#        return Response({"error": "Mesa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
+#    except Pedido.DoesNotExist:
+#        return Response({"error": "Nenhum pedido aberto encontrado para esta mesa."}, status=status.HTTP_404_NOT_FOUND)
+# >>> FIM DA REMOÇÃO <<<
 
 @api_view(['POST'])
 def criar_novo_pedido(request):
@@ -55,7 +75,6 @@ def criar_novo_pedido(request):
     except Mesa.DoesNotExist:
         return Response({"error": "Mesa não encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
-    # Verifica se já existe um pedido aberto para esta mesa
     if Pedido.objects.filter(mesa=mesa, status='aberto').exists():
         return Response({"error": "Já existe um pedido aberto para esta mesa."}, status=status.HTTP_409_CONFLICT)
 
@@ -96,10 +115,9 @@ def adicionar_itens_ao_pedido(request):
             )
 
             if not created:
-                # Se o item já existe no pedido, apenas atualiza a quantidade
                 quantidade_antiga = item_pedido.quantidade
                 item_pedido.quantidade += quantidade
-                item_pedido.observacoes = observacoes # Sobrescreve as observações se houver
+                item_pedido.observacoes = observacoes
                 item_pedido.save()
                 total_recalculado += (quantidade * item_cardapio.preco)
             else:
@@ -144,13 +162,11 @@ def enviar_para_cozinha(request, pedido_id):
                 })
 
             except ItemPedido.DoesNotExist:
-                # Ignora itens que já foram enviados ou não pertencem a este pedido
                 continue
         
         if not itens_enviados_data:
             return Response({"error": "Nenhum item válido encontrado para envio."}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Enviar mensagem WebSocket para a cozinha
         channel_layer = get_channel_layer()
         async_to_sync(channel_layer.group_send)(
             'kitchen_updates', # Nome do grupo definido no consumer
@@ -167,6 +183,5 @@ def enviar_para_cozinha(request, pedido_id):
             }
         )
 
-    # Retorna o pedido atualizado (com os itens marcados como enviados)
     serializer = PedidoSerializer(pedido)
     return Response(serializer.data, status=status.HTTP_200_OK)

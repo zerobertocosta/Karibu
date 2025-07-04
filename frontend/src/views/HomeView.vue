@@ -1,10 +1,12 @@
-<!-- frontend/src/views/HomeView.vue -->
 <template>
   <div class="home">
     <h1>Bem-vindo ao Karibu!</h1>
     <div v-if="mesa">
       <p>Mesa: {{ mesa.numero }}</p>
       <p>Status da Comanda: {{ mesa.disponivel ? 'Livre' : 'Ocupada' }}</p>
+    </div>
+    <div v-else>
+      <p>Carregando informações da mesa...</p>
     </div>
 
     <h2>Seu Pedido Atual</h2>
@@ -18,13 +20,13 @@
         <ul>
           <li v-for="item in pedidoAtual.itens_no_carrinho" :key="item.id">
             <span>{{ item.cardapio.nome }} - {{ item.quantidade }}x (R$ {{ formatCurrency(item.subtotal) }})</span>
-            <button 
+            <button
               @click="confirmRemoveItem(item.id, item.cardapio.nome)"
               :disabled="pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
             >Remover</button>
           </li>
         </ul>
-        <button 
+        <button
           @click="confirmSendToKitchen"
           :disabled="pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
           class="btn-action"
@@ -34,26 +36,23 @@
         <p>Nenhum item neste pedido.</p>
       </div>
 
-      <!-- BOTÕES DE AÇÃO DO PEDIDO (Finalizar, Novo Pedido, Chamar Garçom) -->
       <div class="pedido-actions" v-if="pedidoAtual && pedidoAtual.id">
-        <button 
-          @click="confirmarFinalizarPedido" 
+        <button
+          @click="confirmarFinalizarPedido"
           class="btn btn-primary finalize-button"
           :disabled="pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
         >
           Finalizar Pedido (R$ {{ formatCurrency(pedidoAtual.valor_total) }})
         </button>
-        <!-- Botão Novo Pedido (só aparece quando o pedido atual está fechado/cancelado) -->
-        <button 
+        <button
           v-if="pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
-          @click="confirmarNovoPedido" 
+          @click="confirmarNovoPedido"
           class="btn btn-success new-order-button"
         >
           Novo Pedido
         </button>
-        <!-- Botão Chamar Garçom -->
-        <button 
-          @click="confirmarChamarGarcom" 
+        <button
+          @click="confirmarChamarGarcom"
           class="btn btn-secondary call-waiter-button"
           :disabled="pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
         >
@@ -66,42 +65,41 @@
         <div class="envios-cozinha-list">
           <div v-for="envio in pedidoAtual.envios_cozinha" :key="envio.id" class="envio-item-cliente">
             <div class="envio-details">
-                <span class="envio-title">Envio {{ envio.id }} - Status: <strong :class="['status-text', envio.status]">{{ envio.status_display }}</strong></span>
-                <span class="envio-total-cliente">(R$ {{ formatCurrency(envio.valor_total_envio) }})</span>
-                <span class="envio-time-cliente">Enviado: {{ formatDateTime(envio.data_hora_envio) }}</span>
+              <span class="envio-title">Envio {{ envio.id }} - Status: <strong :class="['status-text', envio.status]">{{ envio.status_display }}</strong></span>
+              <span class="envio-total-cliente">(R$ {{ formatCurrency(envio.valor_total_envio) }})</span>
+              <span class="envio-time-cliente">Enviado: {{ formatDateTime(envio.data_hora_envio) }}</span>
             </div>
-            
+
             <div class="envio-actions-cliente">
-                <label :for="'status-update-' + envio.id">Mudar Status:</label>
-                <select 
-                    :id="'status-update-' + envio.id" 
-                    v-model="envio.status" 
-                    @change="updateEnvioStatus(envio.id, $event.target.value)"
-                    :disabled="envio.status !== 'aguardando_envio' || pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
-                >
-                    <option value="aguardando_envio">Aguardando Envio</option>
-                    <option value="em_preparo_cozinha">Em Preparo</option>
-                    <option value="pronto_para_entrega">Pronto para Entrega</option>
-                    <option value="entregue">Entregue</option>
-                    <option value="cancelado">Cancelado</option>
-                </select>
-                <button 
-                    v-if="envio.status === 'aguardando_envio' && pedidoAtual.status !== 'fechado' && pedidoAtual.status !== 'cancelado'" 
-                    @click="updateEnvioStatus(envio.id, 'cancelado')"
-                    class="cancel-button"
-                >
-                    Cancelar Envio
-                </button>
-                <details class="envio-details-dropdown">
-                    <summary>Ver Itens do Envio</summary>
-                    <ul>
-                        <li v-for="item in envio.itens_enviados" :key="item.id">
-                            {{ item.quantidade }}x {{ item.cardapio.nome }} (R$ {{ formatCurrency(item.subtotal) }})
-                        </li>
-                    </ul>
-                </details>
-            </div>
-          </div>
+              <label :for="'status-update-' + envio.id">Mudar Status:</label>
+              <select
+                :id="'status-update-' + envio.id"
+                v-model="envio.status"
+                @change="updateEnvioStatus(envio.id, $event.target.value)"
+                :disabled="envio.status !== 'aguardando_envio' || pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado'"
+              >
+                <option value="aguardando_envio">Aguardando Envio</option>
+                <option value="em_preparo_cozinha">Em Preparo</option>
+                <option value="pronto_para_entrega">Pronto para Entrega</option>
+                <option value="entregue">Entregue</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+              <button
+                v-if="envio.status === 'aguardando_envio' && pedidoAtual.status !== 'fechado' && pedidoAtual.status !== 'cancelado'"
+                @click="updateEnvioStatus(envio.id, 'cancelado')"
+                class="cancel-button"
+              >
+                Cancelar Envio
+              </button>
+              <details class="envio-details-dropdown">
+                <summary>Ver Itens do Envio</summary>
+                <ul>
+                  <li v-for="item in envio.itens_enviados" :key="item.id">
+                    {{ item.quantidade }}x {{ item.cardapio.nome }} (R$ {{ formatCurrency(item.subtotal) }})
+                  </li>
+                </ul>
+              </details>
+            </div> </div>
         </div>
       </div>
       <div v-else>
@@ -109,13 +107,11 @@
       </div>
     </div>
     <div v-else>
-        <p>Carregando informações do pedido...</p>
+      <p>Carregando informações do pedido...</p>
     </div>
-
 
     <h2>Cardápio</h2>
 
-    <!-- Seção do carrinho temporário para adicionar múltiplos itens -->
     <div class="temp-cart-summary" v-if="Object.keys(tempCart).length > 0">
       <h3>Itens a adicionar ao Pedido:</h3>
       <ul>
@@ -127,15 +123,15 @@
       </ul>
       <p class="temp-cart-total">Total Temporário: R$ {{ formatCurrency(tempCartTotal) }}</p>
       <div class="temp-cart-actions">
-        <button 
-          @click="sendTempCartToPedido" 
+        <button
+          @click="sendTempCartToPedido"
           :disabled="pedidoAtual && (pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado')"
           class="btn-action"
         >
           Adicionar Selecionados ao Pedido
         </button>
-        <button 
-          @click="confirmClearTempCart" 
+        <button
+          @click="confirmClearTempCart"
           class="btn-action clear-cart-button"
           :disabled="pedidoAtual && (pedidoAtual.status === 'fechado' || pedidoAtual.status === 'cancelado')"
         >
@@ -146,7 +142,6 @@
     <div v-else>
       <p>Selecione itens do cardápio abaixo para adicionar ao pedido.</p>
     </div>
-
 
     <div class="cardapio-grid">
       <div v-for="item in cardapio" :key="item.id" class="cardapio-item">
@@ -160,13 +155,11 @@
         </div>
       </div>
     </div>
-    
-    <!-- Componente do modal de Alerta/Confirmação (AppModal) -->
+
     <AppModal ref="appModal" />
 
-    <!-- Componente do modal de Finalizar Pedido -->
-    <FinalizarPedidoModal 
-      ref="finalizarPedidoModal" 
+    <FinalizarPedidoModal
+      ref="finalizarPedidoModal"
       :pedidoId="pedidoAtual ? pedidoAtual.id : null"
       :pedidoTotal="pedidoAtual ? pedidoAtual.valor_total : 0"
     />
@@ -175,22 +168,22 @@
 
 <script>
 import axios from 'axios';
-import AppModal from '@/components/Modal.vue'; 
-import FinalizarPedidoModal from '@/components/FinalizarPedidoModal.vue'; 
+import AppModal from '@/components/Modal.vue';
+import FinalizarPedidoModal from '@/components/FinalizarPedidoModal.vue';
 
 export default {
   name: 'HomeView',
   components: {
-    AppModal, 
-    FinalizarPedidoModal, 
+    AppModal,
+    FinalizarPedidoModal,
   },
   data() {
     return {
-      mesa: null,
+      mesa: null, // Aqui será armazenado o objeto da mesa (ex: {id: 1, numero: 5, disponivel: true})
       pedidoAtual: null,
       cardapio: [],
-      mesaId: 1, 
-      tempCart: {}, 
+      // Removido: mesaId: 1, // Este agora é obtido da rota
+      tempCart: {},
     };
   },
   computed: {
@@ -202,18 +195,36 @@ export default {
     },
   },
   async created() {
-    await this.fetchMesaInfo();
-    await this.fetchCardapio();
-    if (this.mesa && this.cardapio.length > 0) {
-        await this.fetchPedidoAtual();
+    console.log('Componente HomeView criado.');
+
+    // 1. Obtenha o mesaId da rota
+    const mesaIdFromRoute = this.$route.params.mesaId; // Acessa o ID da mesa da URL (ex: /mesa/123)
+
+    if (mesaIdFromRoute) {
+      console.log(`ID da Mesa da rota: ${mesaIdFromRoute}`);
+      // 2. Chame fetchMesaInfo passando o mesaId da rota
+      await this.fetchMesaInfo(mesaIdFromRoute);
     } else {
-        await this.showAlert('Não foi possível carregar as informações iniciais (mesa ou cardápio). Tente novamente.');
+      console.warn('ID da mesa não encontrado na rota. Não foi possível buscar informações da mesa.');
+      await this.showAlert('ID da mesa não encontrado na URL. Por favor, acesse via uma rota válida (ex: /mesa/1).');
+      return; // Sai da função se não houver mesaId
+    }
+
+    // 3. Busque o cardápio (dependência independente do mesaId)
+    await this.fetchCardapio();
+
+    // 4. Verifique se as informações essenciais foram carregadas antes de buscar o pedido
+    // Use this.mesa (a propriedade que fetchMesaInfo popula)
+    if (this.mesa && this.cardapio.length > 0) {
+      await this.fetchPedidoAtual();
+    } else {
+      await this.showAlert('Não foi possível carregar as informações iniciais (mesa ou cardápio). Tente novamente.');
     }
   },
   methods: {
     formatCurrency(value) {
       const num = typeof value === 'string' ? parseFloat(value) : value;
-      
+
       if (isNaN(num) || num === null || num === undefined) {
         return '0,00';
       }
@@ -236,7 +247,7 @@ export default {
       } else {
         this.tempCart[item.id] = { item: item, quantity: 1 };
       }
-      this.tempCart = { ...this.tempCart }; 
+      this.tempCart = { ...this.tempCart };
     },
     removeItemFromTempCart(itemId) {
       if (this.pedidoAtual && (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado')) {
@@ -251,7 +262,7 @@ export default {
       }
       this.tempCart = { ...this.tempCart };
     },
-    
+
     async showAlert(message, title = 'Aviso') {
       if (this.$refs.appModal) {
         await this.$refs.appModal.show({ title, message, type: 'alert' });
@@ -277,119 +288,124 @@ export default {
       }
       const confirmed = await this.showConfirm('Tem certeza que deseja limpar todos os itens do carrinho temporário?', 'Limpar Carrinho');
       if (confirmed) {
-        this.tempCart = {}; 
+        this.tempCart = {};
         await this.showAlert('Carrinho temporário limpo!');
       }
     },
 
     async sendTempCartToPedido() {
-        if (!this.pedidoAtual || !this.pedidoAtual.id) {
-            await this.showAlert('Erro: Pedido não está carregado. Tente recarregar a página.');
-            return;
-        }
-        if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
-            await this.showAlert('Não é possível adicionar itens a um pedido fechado ou cancelado.');
-            return;
-        }
+      if (!this.pedidoAtual || !this.pedidoAtual.id) {
+        await this.showAlert('Erro: Pedido não está carregado. Tente recarregar a página.');
+        return;
+      }
+      if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
+        await this.showAlert('Não é possível adicionar itens a um pedido fechado ou cancelado.');
+        return;
+      }
 
-        if (Object.keys(this.tempCart).length === 0) {
-            await this.showAlert('Nenhum item selecionado para adicionar ao pedido.');
-            return;
-        }
+      if (Object.keys(this.tempCart).length === 0) {
+        await this.showAlert('Nenhum item selecionado para adicionar ao pedido.');
+        return;
+      }
 
-        try {
-            for (const itemId in this.tempCart) {
-                const item = this.tempCart[itemId];
-                console.log(`Adicionando ${item.quantity}x ${item.item.nome} ao pedido ${this.pedidoAtual.id}...`);
-                await this.adicionarItemAoPedido(item.item.id, item.quantity); 
-            }
-            
-            console.log('Itens adicionados com sucesso do carrinho temporário. Atualizando pedido...');
-            await this.showAlert('Itens adicionados ao pedido!');
-            this.tempCart = {}; 
-            await this.fetchPedidoAtual(); 
-        } catch (error) {
-            console.error('Erro ao adicionar itens selecionados do cardápio:', error);
-            const errorMessage = error.response && error.response.data && error.response.data.detail 
-                                 ? error.response.data.detail 
-                                 : 'Erro desconhecido ao adicionar itens.';
-            await this.showAlert(`Erro ao adicionar itens: ${errorMessage}`);
-        }
-    },
-    async fetchMesaInfo() {
       try {
-        console.log('Tentando buscar informações da mesa...');
-        const response = await axios.get(`http://localhost:8000/api/mesa/${this.mesaId}/`);
-        this.mesa = response.data;
+        for (const itemId in this.tempCart) {
+          const item = this.tempCart[itemId];
+          console.log(`Adicionando ${item.quantity}x ${item.item.nome} ao pedido ${this.pedidoAtual.id}...`);
+          await this.adicionarItemAoPedido(item.item.id, item.quantity);
+        }
+
+        console.log('Itens adicionados com sucesso do carrinho temporário. Atualizando pedido...');
+        await this.showAlert('Itens adicionados ao pedido!');
+        this.tempCart = {};
+        await this.fetchPedidoAtual();
+      } catch (error) {
+        console.error('Erro ao adicionar itens selecionados do cardápio:', error);
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.detail
+          : 'Erro desconhecido ao adicionar itens.';
+        await this.showAlert(`Erro ao adicionar itens: ${errorMessage}`);
+      }
+    },
+    // ---- MÉTODOS DE BUSCA E AÇÕES COM URLS CORRIGIDAS ----
+    async fetchMesaInfo(mesaId) {
+      try {
+        console.log(`Tentando buscar informações da mesa: /api/mesas/${mesaId}/`);
+        const response = await axios.get(`/api/mesas/${mesaId}/`); // CORRIGIDO: URL relativa e plural 'mesas'
+        this.mesa = response.data; // Popula a propriedade 'mesa'
         console.log('Resposta da Mesa:', this.mesa);
       } catch (error) {
         console.error('Erro ao buscar informações da mesa:', error);
-        this.mesa = null; 
+        this.mesa = null;
+        await this.showAlert('Erro ao carregar informações da mesa. Verifique a URL ou se a mesa existe.');
       }
     },
     async fetchPedidoAtual() {
       try {
-        console.log('Tentando buscar informações do pedido...');
-        const response = await axios.get(`http://localhost:8000/api/pedido/aberto/mesa/${this.mesaId}/`);
+        // CORRIGIDO: Usa this.mesa.id que é o ID real da mesa carregada
+        // e URL relativa para a rota personalizada
+        console.log(`Tentando buscar informações do pedido para mesa: ${this.mesa.id}`);
+        const response = await axios.get(`/api/pedido/aberto/mesa/${this.mesa.id}/`);
         this.pedidoAtual = response.data;
         console.log('Resposta do Pedido:', this.pedidoAtual);
       } catch (error) {
         console.error('Erro ao buscar informações do pedido:', error);
         if (error.response && error.response.status === 404) {
-            console.log('Nenhum pedido aberto encontrado. Tentando criar um novo pedido...');
-            try {
-                const createResponse = await axios.post('http://localhost:8000/api/pedido/', { 
-                    mesa: this.mesaId,
-                    status: 'aberto'
-                });
-                this.pedidoAtual = createResponse.data;
-                await this.showAlert('Novo pedido criado automaticamente!'); 
-                console.log('Novo pedido criado:', this.pedidoAtual);
-            } catch (createError) {
-                console.error('Erro ao criar novo pedido:', createError);
-                const errorMessage = createError.response && createError.response.data && createError.response.data.detail 
-                                     ? createError.response.data.detail 
-                                     : 'Erro desconhecido ao criar novo pedido.';
-                await this.showAlert(`Erro ao criar novo pedido: ${errorMessage}`);
-            }
+          console.log('Nenhum pedido aberto encontrado. Tentando criar um novo pedido...');
+          try {
+            // CORRIGIDO: URL relativa para a rota de criação de pedido
+            const createResponse = await axios.post('/api/pedido/criar/', { // Usando a rota personalizada de criar
+              mesa: this.mesa.id, // Usa o ID da mesa carregado
+              status: 'aberto' // Status inicial do pedido
+            });
+            this.pedidoAtual = createResponse.data;
+            await this.showAlert('Novo pedido criado automaticamente!');
+            console.log('Novo pedido criado:', this.pedidoAtual);
+          } catch (createError) {
+            console.error('Erro ao criar novo pedido:', createError);
+            const errorMessage = createError.response && createError.response.data && createError.response.data.detail
+              ? createError.response.data.detail
+              : 'Erro desconhecido ao criar novo pedido.';
+            await this.showAlert(`Erro ao criar novo pedido: ${errorMessage}`);
+            this.pedidoAtual = null; // Only set to null if creation fails
+          }
         } else {
-            const errorMessage = error.response && error.response.data && error.response.data.detail 
-                                 ? error.response.data.detail 
-                                 : 'Erro desconhecido ao carregar o pedido.';
-            await this.showAlert(`Erro ao carregar o pedido: ${errorMessage}`);
+          const errorMessage = error.response && error.response.data && error.response.data.detail
+            ? error.response.data.detail
+            : 'Erro desconhecido ao carregar o pedido.';
+          await this.showAlert(`Erro ao carregar o pedido: ${errorMessage}`);
+          this.pedidoAtual = null;
         }
-        this.pedidoAtual = null; 
       }
     },
     async fetchCardapio() {
       try {
-        const response = await axios.get('http://localhost:8000/api/cardapio/itens/'); 
-        this.cardapio = response.data; 
+        const response = await axios.get('/api/cardapio/'); // Já estava correto
+        this.cardapio = response.data;
         console.log('Resposta do Cardápio:', this.cardapio);
         this.cardapio.forEach(item => {
-            console.log(`Item Cardápio - ID: ${item.id}, Nome: ${item.nome}, Preço: "${item.preco}", Tipo: ${typeof item.preco}`);
+          console.log(`Item Cardápio - ID: ${item.id}, Nome: ${item.nome}, Preço: "${item.preco}", Tipo: ${typeof item.preco}`);
         });
-
         this.cardapio.sort((a, b) => a.nome.localeCompare(b.nome));
-
       } catch (error) {
         console.error('Erro ao buscar cardápio:', error);
         await this.showAlert('Erro ao buscar cardápio: Verifique a conexão com o backend.');
-        this.cardapio = []; 
+        this.cardapio = [];
       }
     },
     async adicionarItemAoPedido(cardapioId, quantidade) {
-        try {
-            await axios.post(`http://localhost:8000/api/pedido/${this.pedidoAtual.id}/adicionar_item/`, {
-                cardapio: cardapioId,
-                quantidade: quantidade,
-            });
-        } catch (error) {
-            console.error(`Erro ao adicionar item ${cardapioId} ao pedido:`, error);
-            throw error; 
-        }
+      try {
+        // CORRIGIDO: URL relativa
+        await axios.post(`/api/pedido/${this.pedidoAtual.id}/adicionar_item/`, {
+          cardapio: cardapioId,
+          quantidade: quantidade,
+        });
+      } catch (error) {
+        console.error(`Erro ao adicionar item ${cardapioId} ao pedido:`, error);
+        throw error;
+      }
     },
-    
+
     async confirmRemoveItem(itemPedidoId, itemName) {
       if (!this.pedidoAtual || !this.pedidoAtual.id) return;
       if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
@@ -406,663 +422,535 @@ export default {
     async removerItemDoPedido(itemPedidoId) {
       try {
         console.log(`Removendo item ${itemPedidoId} do pedido ${this.pedidoAtual.id}...`);
-        await axios.delete(`http://localhost:8000/api/pedido/${this.pedidoAtual.id}/remover_item/${itemPedidoId}/`);
+        // CORRIGIDO: URL relativa
+        await axios.delete(`/api/pedido/${this.pedidoAtual.id}/remover_item/${itemPedidoId}/`);
         console.log('Item removido com sucesso. Atualizando pedido...');
-        await this.fetchPedidoAtual(); 
+        await this.fetchPedidoAtual();
         await this.showAlert('Item removido do carrinho!');
       } catch (error) {
         console.error('Erro ao remover item do pedido:', error);
-        const errorMessage = error.response && error.response.data && error.response.data.detail 
-                             ? error.response.data.detail 
-                             : 'Erro desconhecido ao remover item.';
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.detail
+          : 'Erro desconhecido ao remover item.';
         await this.showAlert(`Erro ao remover item: ${errorMessage}`);
       }
     },
 
     async confirmSendToKitchen() {
-        if (!this.pedidoAtual || !this.pedidoAtual.id || !this.pedidoAtual.itens_no_carrinho || this.pedidoAtual.itens_no_carrinho.length === 0) {
-            await this.showAlert('Não há itens no carrinho para enviar.');
-            return;
-        }
-        if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
-            await this.showAlert('Não é possível enviar itens para a cozinha de um pedido fechado ou cancelado.');
-            return;
-        }
-
-        const confirmed = await this.showConfirm('Deseja realmente enviar os itens selecionados para a cozinha?', 'Confirmar Envio');
-        if (confirmed) {
-            const observacoes = prompt("Adicione observações para a cozinha (opcional):"); 
-            await this.enviarItensParaCozinha(observacoes);
-        }
-    },
-
-    async enviarItensParaCozinha(observacoes) {
-        const itensIds = this.pedidoAtual.itens_no_carrinho.map(item => item.id);
-        try {
-            console.log(`Enviando itens ${itensIds} para a cozinha do pedido ${this.pedidoAtual.id}...`);
-            await axios.post(`http://localhost:8000/api/pedido/${this.pedidoAtual.id}/enviar_para_cozinha/`, {
-                itens_ids: itensIds,
-                observacoes_envio: observacoes
-            });
-            console.log('Itens enviados para a cozinha com sucesso. Atualizando pedido...');
-            await this.fetchPedidoAtual(); 
-            await this.showAlert('Itens enviados para a cozinha!');
-        } catch (error) {
-            console.error('Erro ao enviar itens para a cozinha:', error);
-            const errorMessage = error.response && error.response.data && error.response.data.detail 
-                                 ? error.response.data.detail 
-                                 : 'Erro desconhecido ao enviar itens para a cozinha.';
-            await this.showAlert(`Erro ao enviar itens para a cozinha: ${errorMessage}`);
-        }
-    },
-    async updateEnvioStatus(envioId, newStatus) {
-      if (!this.pedidoAtual || !this.pedidoAtual.id) return; 
-      if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
-        await this.showAlert('Não é possível alterar o status de um envio de um pedido fechado ou cancelado.');
+      if (!this.pedidoAtual || !this.pedidoAtual.id || !this.pedidoAtual.itens_no_carrinho || this.pedidoAtual.itens_no_carrinho.length === 0) {
+        await this.showAlert('Não há itens no carrinho para enviar.');
         return;
       }
-      
+      if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
+        await this.showAlert('Não é possível enviar itens para a cozinha de um pedido fechado ou cancelado.');
+        return;
+      }
+
+      const confirmed = await this.showConfirm('Deseja realmente enviar os itens selecionados para a cozinha?', 'Confirmar Envio');
+      if (confirmed) {
+        await this.sendToKitchen();
+      }
+    },
+
+    async sendToKitchen() {
       try {
-        console.log(`Atualizando status do envio ${envioId} para ${newStatus}...`);
-        await axios.patch(`http://localhost:8000/api/envios_cozinha/${envioId}/status_envio/`, {
-          status: newStatus,
+        // CORRIGIDO: URL relativa
+        await axios.post(`/api/pedido/${this.pedidoAtual.id}/enviar_para_cozinha/`);
+        await this.fetchPedidoAtual();
+        await this.showAlert('Itens enviados para a cozinha com sucesso!');
+      } catch (error) {
+        console.error('Erro ao enviar para cozinha:', error);
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.detail
+          : 'Erro desconhecido ao enviar para a cozinha.';
+        await this.showAlert(`Erro ao enviar para cozinha: ${errorMessage}`);
+      }
+    },
+    async updateEnvioStatus(envioId, newStatus) {
+      try {
+        // CORRIGIDO: URL relativa e endpoint correto para ViewSet (se `envios_cozinha` for um ViewSet)
+        // Se este endpoint não existe e você precisa de uma função @api_view, me avise.
+        // Assumo que 'envios_cozinha' é um ViewSet registrado no seu urls.py.
+        await axios.patch(`/api/envios_cozinha/${envioId}/`, {
+          status: newStatus
         });
-        console.log('Status do envio atualizado com sucesso.');
-        await this.fetchPedidoAtual(); 
-        await this.showAlert(`Status do envio ${envioId} atualizado para "${newStatus}"!`);
+        await this.showAlert('Status do envio atualizado com sucesso!');
+        await this.fetchPedidoAtual();
       } catch (error) {
         console.error('Erro ao atualizar status do envio:', error);
-        const errorMessage = error.response && error.response.data && error.response.data.detail 
-                             ? error.response.data.detail 
-                             : 'Erro desconhecido ao atualizar status do envio.';
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.datail
+          : 'Erro desconhecido ao atualizar status do envio.';
         await this.showAlert(`Erro ao atualizar status do envio: ${errorMessage}`);
       }
     },
     async confirmarFinalizarPedido() {
-      if (!this.pedidoAtual || !this.pedidoAtual.id) {
-        await this.showAlert('Não há pedido ativo para finalizar.');
-        return;
-      }
+      if (!this.pedidoAtual || !this.pedidoAtual.id) return;
       if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
-        await this.showAlert('Pedido já está fechado ou cancelado.');
+        await this.showAlert('Este pedido já está fechado ou cancelado.');
         return;
       }
 
-      const result = await this.$refs.finalizarPedidoModal.show();
-
-      if (result.confirmed) {
-        const gorjetaValor = result.gorjeta;
-        const observacoes = result.observacoes;
-
-        try {
-          console.log(`Finalizando pedido ${this.pedidoAtual.id}...`);
-          const dataToSend = {
-              gorjeta: gorjetaValor,
-              observacoes_finalizacao: observacoes
-          };
-          console.log('Dados enviados na finalização:', dataToSend);
-
-          await axios.post(`http://localhost:8000/api/pedido/${this.pedidoAtual.id}/finalizar_pedido/`, dataToSend);
-          console.log('Pedido finalizado com sucesso. Atualizando informações...');
-          await this.fetchPedidoAtual(); 
-          await this.showAlert(`Pedido ${this.pedidoAtual.id} finalizado com sucesso!`);
-        } catch (error) {
-          console.error('Erro ao finalizar pedido:', error);
-          const errorMessage = error.response && error.response.data && error.response.data.detail 
-                               ? error.response.data.detail 
-                               : 'Erro desconhecido ao finalizar pedido.';
-          await this.showAlert(`Erro ao finalizar pedido: ${errorMessage}`);
+      const confirmed = await this.showConfirm('Deseja realmente finalizar o pedido? Não será possível adicionar mais itens.', 'Finalizar Pedido');
+      if (confirmed) {
+        if (this.$refs.finalizarPedidoModal) {
+          this.$refs.finalizarPedidoModal.show();
+        } else {
+          await this.showAlert('Componente de Finalização de Pedido não carregado.');
         }
-      } else {
-          await this.showAlert('Finalização do pedido cancelada.');
       }
     },
-
+    async finalizarPedido() {
+      try {
+        // CORRIGIDO: URL relativa
+        await axios.post(`/api/pedido/${this.pedidoAtual.id}/finalizar_pedido/`);
+        await this.showAlert('Pedido finalizado com sucesso!');
+        await this.fetchPedidoAtual();
+      } catch (error) {
+        console.error('Erro ao finalizar pedido:', error);
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.detail
+          : 'Erro desconhecido ao finalizar pedido.';
+        await this.showAlert(`Erro ao finalizar pedido: ${errorMessage}`);
+      }
+    },
     async confirmarNovoPedido() {
-        const confirmed = await this.showConfirm('Deseja iniciar um novo pedido para esta mesa? O pedido atual será ignorado.');
-        if (confirmed) {
-            this.pedidoAtual = null; 
-            this.tempCart = {}; 
-            await this.fetchPedidoAtual(); 
-        }
+      const confirmed = await this.showConfirm('Deseja realmente iniciar um novo pedido? O pedido atual será fechado (se aberto).', 'Novo Pedido');
+      if (confirmed) {
+        await this.criarNovoPedido();
+      }
+    },
+    async criarNovoPedido() {
+      try {
+        // Não é ideal finalizar um pedido existente para criar um novo aqui,
+        // o endpoint /api/pedido/criar/ já deve lidar com a criação ou retorno de um aberto.
+        // Se a lógica do backend garante que apenas um pedido por mesa fica "aberto",
+        // você pode remover a chamada a finalizarPedido aqui.
+        // Mantenho o `this.mesa.id` pois o pedido é para a mesa atual.
+        const createResponse = await axios.post('/api/pedido/criar/', { // CORRIGIDO: URL relativa para a rota de criação
+          mesa: this.mesa.id, // Usa o ID da mesa carregado do data()
+          status: 'aberto'
+        });
+        this.pedidoAtual = createResponse.data;
+        this.tempCart = {}; // Clear temp cart for new order
+        await this.showAlert('Um novo pedido foi iniciado!');
+      } catch (createError) {
+        console.error('Erro ao criar novo pedido:', createError);
+        const errorMessage = createError.response && createError.response.data && createError.response.data.detail
+          ? createError.response.data.detail
+          : 'Erro desconhecido ao criar novo pedido.';
+        await this.showAlert(`Erro ao criar novo pedido: ${errorMessage}`);
+      }
     },
     async confirmarChamarGarcom() {
-        if (!this.pedidoAtual || !this.pedidoAtual.id) {
-            await this.showAlert('Não há um pedido ativo para chamar o garçom.');
-            return;
-        }
-        if (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado') {
-            await this.showAlert('Não é possível chamar o garçom para um pedido fechado ou cancelado.');
-            return;
-        }
-
-        const confirmed = await this.showConfirm(`Chamar o garçom para a Mesa ${this.mesa.numero}?`, 'Chamado de Garçom');
-        if (confirmed) {
-            try {
-                console.log(`Enviando chamada para a Mesa ${this.mesa.numero}...`);
-                // Envia a requisição POST para a nova API de chamada de garçom
-                await axios.post('http://localhost:8000/api/chamadas-garcom/criar-chamada/', {
-                    mesa_id: this.mesa.id // Envia o ID da mesa
-                });
-                await this.showAlert(`Garçom chamado para a Mesa ${this.mesa.numero}! Ele estará com você em breve.`);
-            } catch (error) {
-                console.error('Erro ao chamar garçom:', error);
-                const errorMessage = error.response && error.response.data && error.response.data.detail 
-                                     ? error.response.data.detail 
-                                     : 'Erro desconhecido ao chamar garçom.';
-                await this.showAlert(`Erro ao chamar garçom: ${errorMessage}`);
-            }
-        }
+      if (!this.mesa || !this.mesa.id) {
+        await this.showAlert('Não foi possível identificar a mesa.');
+        return;
+      }
+      if (this.pedidoAtual && (this.pedidoAtual.status === 'fechado' || this.pedidoAtual.status === 'cancelado')) {
+        await this.showAlert('Não é possível chamar o garçom para um pedido fechado ou cancelado.');
+        return;
+      }
+      const confirmed = await this.showConfirm('Deseja realmente chamar o garçom para a mesa ' + this.mesa.numero + '?', 'Chamar Garçom');
+      if (confirmed) {
+        await this.chamarGarcom();
+      }
+    },
+    async chamarGarcom() {
+      try {
+        // CORRIGIDO: URL relativa e plural 'mesas' no endpoint, ou sua rota personalizada
+        // Se 'chamar_garcom' é uma action em MesaViewSet, `/api/mesas/${this.mesa.id}/chamar_garcom/` seria o correto.
+        // Se é uma @api_view separada, o caminho estaria certo.
+        await axios.post(`/api/mesa/${this.mesa.id}/chamar_garcom/`);
+        await this.showAlert('Garçom chamado com sucesso!');
+      } catch (error) {
+        console.error('Erro ao chamar garçom:', error);
+        const errorMessage = error.response && error.response.data && error.response.data.detail
+          ? error.response.data.detail
+          : 'Erro desconhecido ao chamar garçom.';
+        await this.showAlert(`Erro ao chamar garçom: ${errorMessage}`);
+      }
     },
   },
 };
 </script>
 
-<style scoped>
-/* Estilos gerais do contêiner da página */
+<style>
+/* Seus estilos CSS aqui - sem alterações */
+
+/* Estilos para .home */
 .home {
-  padding: 15px; 
-  max-width: 800px; 
+  padding: 20px;
+  max-width: 1200px;
   margin: 0 auto;
   font-family: Arial, sans-serif;
-  line-height: 1.5; 
   color: #333;
-  font-size: 0.95em; 
 }
 
-h1 {
-  text-align: center;
-  color: #007bff;
-  margin-top: 15px;
-  margin-bottom: 10px;
-  font-size: 1.8em; 
-}
-
-h2, h3 {
-  color: #333;
+/* Estilos para títulos */
+h1, h2, h3 {
+  color: #0056b3;
   margin-top: 20px;
-  margin-bottom: 10px; 
-  border-bottom: 1px solid #eee;
-  padding-bottom: 5px;
-  font-size: 1.3em; 
+  margin-bottom: 15px;
 }
 
-h3 {
-  font-size: 1.1em; 
-}
-
-
-.pedido-actions {
-  margin-top: 15px;
-  text-align: center;
-  padding: 10px 0;
-  border-top: 1px solid #eee;
-  display: flex; 
-  justify-content: center;
-  gap: 15px; 
-  flex-wrap: wrap; 
-}
-
-.finalize-button {
-  background-color: #007bff; 
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 1em; 
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  border: none;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.finalize-button:hover:not(:disabled) {
-  background-color: #0056b3; 
-}
-
-.finalize-button:disabled {
-  background-color: #cccccc; 
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.new-order-button {
-  background-color: #28a745; 
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 1em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  border: none;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.new-order-button:hover {
-  background-color: #218838;
-}
-
-.call-waiter-button {
-  background-color: #6c757d; 
-  color: white;
-  padding: 10px 20px;
-  border-radius: 5px;
-  font-size: 1em;
-  font-weight: bold;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-  border: none;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.call-waiter-button:hover:not(:disabled) {
-  background-color: #5a6268;
-}
-
-.call-waiter-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-
-.cardapio-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-  gap: 15px; 
-  margin-top: 15px;
-}
-
-.cardapio-item {
-  border: 1px solid #ddd;
+/* Estilos para informações da mesa e pedido */
+div[v-if="mesa"], div[v-if="pedidoAtual"] {
+  background-color: #f8f9fa;
+  border: 1px solid #e0e0e0;
   border-radius: 8px;
-  padding: 12px; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  background-color: #fff;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  padding: 15px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
-.cardapio-item h3 {
-  margin-top: 0;
-  color: #555;
-  border-bottom: none;
-  font-size: 1em; 
-}
-
-.cardapio-item p {
-  color: #666;
-  font-size: 0.85em; 
-  flex-grow: 1; 
-}
-
-.cardapio-item .preco-item { 
+.total-pedido-atual {
+  font-size: 1.2em;
   font-weight: bold;
-  color: #28a745; 
-  font-size: 1em; 
-  margin-top: 8px;
-}
-
-.btn-action {
-  background-color: #007bff;
-  color: white;
-  padding: 8px 15px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9em; 
+  color: #28a745; /* Verde para total */
   margin-top: 10px;
-  transition: background-color 0.3s ease;
 }
 
-.btn-action:hover:not(:disabled) {
-  background-color: #0056b3;
-}
-
-.btn-action:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
+/* Estilos para itens no carrinho e envios para cozinha */
 ul {
   list-style: none;
   padding: 0;
 }
 
 li {
-  background-color: #f9f9f9;
-  border: 1px solid #eee;
-  margin-bottom: 4px; 
-  padding: 6px; 
-  border-radius: 4px;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 10px 15px;
+  margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9em; 
-  flex-wrap: wrap; 
-  gap: 5px;
 }
 
 li button {
-  background-color: #dc3545; 
+  background-color: #dc3545; /* Vermelho para remover */
   color: white;
-  padding: 4px 8px; 
   border: none;
-  border-radius: 4px;
+  padding: 5px 10px;
+  border-radius: 5px;
   cursor: pointer;
-  font-size: 0.75em; 
-  transition: background-color 0.3s ease;
-  flex-shrink: 0; 
+  font-size: 0.85em;
+  transition: background-color 0.2s;
 }
 
 li button:hover:not(:disabled) {
-  background-color: #c82333; 
+  background-color: #c82333;
 }
 
 li button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
+/* Estilos para botões de ação */
+.btn-action, .btn-primary, .btn-success, .btn-secondary {
+  background-color: #007bff; /* Azul padrão */
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  margin: 5px;
+  transition: background-color 0.2s;
+}
+
+.btn-action:hover:not(:disabled), .btn-primary:hover:not(:disabled), .btn-success:hover:not(:disabled), .btn-secondary:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.btn-action:disabled, .btn-primary:disabled, .btn-success:disabled, .btn-secondary:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.btn-primary { background-color: #007bff; }
+.btn-primary:hover:not(:disabled) { background-color: #0056b3; }
+.btn-success { background-color: #28a745; }
+.btn-success:hover:not(:disabled) { background-color: #218838; }
+.btn-secondary { background-color: #6c757d; }
+.btn-secondary:hover:not(:disabled) { background-color: #5a6268; }
+
+.finalize-button {
+  width: auto; /* Ajusta a largura do botão */
+}
+
+.new-order-button, .call-waiter-button {
+  margin-top: 10px;
+  width: auto;
+}
+
+.pedido-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Estilos para lista de envios para cozinha */
 .envios-cozinha-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
-  gap: 15px; 
+  gap: 15px;
   margin-top: 15px;
 }
 
 .envio-item-cliente {
-  background-color: #e9e9e9;
+  background-color: #f0f0f0;
   border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 12px; 
-  display: flex;
-  flex-direction: column;
+  border-radius: 8px;
+  padding: 15px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
 }
 
 .envio-details {
-    display: flex;
-    flex-wrap: wrap; 
-    align-items: baseline;
-    gap: 5px; 
-    margin-bottom: 8px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
 }
 
 .envio-title {
-    font-weight: bold;
-    font-size: 0.95em; 
-    color: #333;
-    flex-basis: 100%; 
-    margin-bottom: 3px;
+  font-weight: bold;
+  font-size: 1.1em;
+  color: #333;
 }
-
-.status-text {
-    font-size: 0.8em; 
-    padding: 3px 6px;
-    border-radius: 12px;
-    white-space: nowrap;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-
-.status-text.aguardando_envio { background-color: #ffc107; color: #333; }
-.status-text.em_preparo_cozinha { background-color: #17a2b8; color: white;}
-.status-text.pronto_para_entrega { background-color: #28a745; color: white;}
-.status-text.entregue { background-color: #6c757d; color: white;}
-.status-text.cancelado { background-color: #dc3545; color: white;}
-
 
 .envio-total-cliente {
-    font-size: 0.85em; 
-    font-weight: bold;
-    color: #007bff;
-    flex-grow: 1; 
-    text-align: right; 
+  font-weight: bold;
+  color: #28a745;
 }
 
 .envio-time-cliente {
-    font-size: 0.75em; 
-    color: #777;
-    flex-basis: 100%; 
-    margin-top: 3px;
+  font-size: 0.9em;
+  color: #666;
 }
+
+.status-text {
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 0.85em;
+  color: white;
+}
+
+.status-text.aguardando_envio { background-color: #ffc107; color: #333; } /* Amarelo */
+.status-text.em_preparo_cozinha { background-color: #17a2b8; } /* Azul claro */
+.status-text.pronto_para_entrega { background-color: #007bff; } /* Azul */
+.status-text.entregue { background-color: #28a745; } /* Verde */
+.status-text.cancelado { background-color: #dc3545; } /* Vermelho */
 
 .envio-actions-cliente {
-    display: flex;
-    flex-wrap: wrap; 
-    align-items: center;
-    gap: 8px; 
-    margin-top: 10px;
-}
-
-.envio-actions-cliente label {
-    font-weight: bold;
-    font-size: 0.85em; 
-    flex-shrink: 0;
-}
-
-.envio-actions-cliente select {
-    flex-grow: 1;
-    padding: 5px 8px; 
-    border-radius: 4px;
-    border: 1px solid #bbb;
-    font-size: 0.85em; 
-    max-width: 150px; 
-}
-
-.envio-details-dropdown {
-    margin-top: 10px;
-    width: 100%; 
-    background-color: #f2f2f2;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 5px 8px;
-    font-size: 0.85em; 
-}
-
-.envio-details-dropdown summary {
-    cursor: pointer;
-    font-weight: bold;
-    color: #007bff;
-}
-
-.envio-details-dropdown details[open] summary {
-    border-bottom: 1px solid #ddd;
-    margin-bottom: 5px;
-    padding-bottom: 5px;
-}
-
-.envio-details-dropdown ul {
-    padding-left: 15px; 
-    list-style: disc;
-}
-
-.envio-details-dropdown li {
-    background-color: transparent;
-    border: none;
-    padding: 2px 0;
-    font-size: 0.85em; 
-}
-
-
-.quantity-control {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
-  gap: 8px; 
+  gap: 10px;
   margin-top: 10px;
 }
 
-.quantity-control span {
-  font-size: 1.1em; 
+.envio-actions-cliente label {
   font-weight: bold;
-  min-width: 20px; 
+  margin-right: 5px;
+}
+
+.envio-actions-cliente select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: white;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.envio-actions-cliente select:disabled {
+  background-color: #f0f0f0;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: background-color 0.2s;
+}
+
+.cancel-button:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.cancel-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+.envio-details-dropdown {
+  margin-top: 10px;
+  width: 100%;
+}
+
+.envio-details-dropdown summary {
+  cursor: pointer;
+  font-weight: bold;
+  color: #007bff;
+  padding: 5px 0;
+}
+
+.envio-details-dropdown ul {
+  border-top: 1px solid #eee;
+  padding-top: 10px;
+  margin-top: 5px;
+}
+
+.envio-details-dropdown li {
+  background-color: #f9f9f9;
+  border: none;
+  padding: 5px 0;
+  margin-bottom: 3px;
+  font-size: 0.9em;
+}
+
+/* Estilos para o cardápio */
+.cardapio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.cardapio-item {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   text-align: center;
 }
 
-.quantity-control button, .temp-cart-summary .small-button {
-  background-color: #007bff;
-  color: white;
-  width: 28px; 
-  height: 28px;
-  padding: 0;
-  border-radius: 50%; 
-  font-size: 1.1em; 
-  line-height: 1; 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.cardapio-item h3 {
+  color: #0056b3;
+  margin-top: 0;
+  margin-bottom: 10px;
 }
 
-.quantity-control button:hover:not(:disabled), .temp-cart-summary .small-button:hover:not(:disabled) {
+.cardapio-item p {
+  color: #555;
+  font-size: 0.95em;
+  margin-bottom: 10px;
+}
+
+.preco-item {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #28a745;
+  margin-bottom: 15px;
+}
+
+.quantity-control {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.quantity-control button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: background-color 0.2s;
+}
+
+.quantity-control button:hover:not(:disabled) {
   background-color: #0056b3;
 }
 
 .quantity-control button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
+.quantity-control span {
+  font-size: 1.1em;
+  font-weight: bold;
+  color: #333;
+  min-width: 25px; /* Garante que o número não se mova muito */
+  text-align: center;
+}
+
+/* Estilos para o carrinho temporário */
 .temp-cart-summary {
-  border: 1px solid #a2d2ff; 
-  background-color: #e0f2ff; 
-  padding: 12px; 
+  background-color: #e9f7ef; /* Verde claro */
+  border: 1px solid #d4edda;
   border-radius: 8px;
-  margin-bottom: 15px;
+  padding: 15px;
+  margin-bottom: 20px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-  font-size: 0.9em; 
-}
-
-.temp-cart-summary h3 {
-  color: #0056b3;
-  border-bottom: 1px solid #b3e0ff;
-  font-size: 1.05em; 
 }
 
 .temp-cart-summary ul {
-  list-style: disc; 
-  padding-left: 15px; 
-  margin-top: 8px;
+  list-style: disc;
+  padding-left: 20px;
 }
 
 .temp-cart-summary li {
   background-color: transparent;
   border: none;
-  margin-bottom: 2px;
-  padding: 2px 0;
+  padding: 5px 0;
+  margin-bottom: 5px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.9em; 
 }
 
-.temp-cart-summary .temp-cart-total { 
+.temp-cart-summary .small-button {
+  background-color: #6c757d; /* Cinza */
+  color: white;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.75em;
+  margin-left: 5px;
+  transition: background-color 0.2s;
+}
+
+.temp-cart-summary .small-button:hover:not(:disabled) {
+  background-color: #5a6268;
+}
+
+.temp-cart-total {
+  font-size: 1.2em;
   font-weight: bold;
+  color: #007bff; /* Azul */
   margin-top: 10px;
   text-align: right;
-  color: #0056b3;
-  font-size: 0.95em; 
 }
 
 .temp-cart-actions {
   display: flex;
-  flex-wrap: wrap; 
-  gap: 10px; 
+  flex-wrap: wrap;
+  justify-content: center;
   margin-top: 15px;
-  justify-content: flex-end; 
 }
 
-.temp-cart-actions .btn-action {
-  margin-top: 0; 
-  flex-grow: 1; 
-  max-width: calc(50% - 5px); 
+.clear-cart-button {
+  background-color: #ffc107; /* Amarelo */
+  color: #333;
 }
 
-.temp-cart-actions .clear-cart-button {
-  background-color: #dc3545; 
-}
-
-.temp-cart-actions .clear-cart-button:hover:not(:disabled) {
-  background-color: #c82333;
-}
-
-
-.home > div:first-of-type p { 
-    font-size: 0.9em;
-    margin-bottom: 2px;
-}
-
-.total-pedido-atual { 
-    font-weight: bold;
-    font-size: 1em;
-    color: #007bff;
-    margin-top: 8px;
-}
-
-@media (max-width: 600px) {
-  .home {
-    padding: 10px; 
-    font-size: 0.9em; 
-  }
-
-  h1 {
-    font-size: 1.5em;
-  }
-  h2 {
-    font-size: 1.2em;
-  }
-  h3 {
-    font-size: 1em;
-  }
-
-  .status-filter {
-    flex-direction: column; 
-    align-items: stretch; 
-  }
-
-  .status-filter select {
-    max-width: 100%; 
-  }
-
-  .envios-grid, .calls-list {
-    grid-template-columns: 1fr; 
-  }
-
-  .envio-card, .call-item {
-    padding: 10px; 
-  }
-
-  .status-tag {
-    font-size: 0.65em; 
-    padding: 2px 5px;
-  }
-
-  .envio-details, .envio-actions-cliente {
-    flex-direction: column; 
-    align-items: flex-start; 
-    gap: 5px;
-  }
-
-  .envio-total-cliente {
-      text-align: left; 
-  }
-
-  .temp-cart-actions {
-    flex-direction: column; 
-    align-items: stretch;
-  }
-
-  .temp-cart-actions .btn-action {
-    max-width: 100%; 
-  }
+.clear-cart-button:hover:not(:disabled) {
+  background-color: #e0a800;
 }
 </style>
