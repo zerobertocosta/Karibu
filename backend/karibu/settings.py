@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     'cardapio',      # Certifique-se de que todos os seus apps estão aqui
     'pedido',        # Certifique-se de que todos os seus apps estão aqui
     'chamada',       # O novo app que estamos adicionando
+    'configuracao'
 ]
 
 MIDDLEWARE = [
