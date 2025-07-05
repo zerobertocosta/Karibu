@@ -7,8 +7,17 @@ from django.core.exceptions import ValidationError
 # Importa os modelos de outros apps se necessário
 from mesa.models import Mesa
 from cardapio.models import ItemCardapio
+from configuracao.models import Estabelecimento # Importa Estabelecimento
 
 class Pedido(models.Model):
+    # Foreign Key para Estabelecimento
+    estabelecimento = models.ForeignKey(
+        Estabelecimento,
+        on_delete=models.CASCADE,
+        related_name='pedidos',
+        verbose_name="Estabelecimento"
+    )
+
     STATUS_CHOICES = [
         ('aberto', 'Aberto'),
         ('em_preparo', 'Em Preparo'),
@@ -27,11 +36,8 @@ class Pedido(models.Model):
     gorjeta = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True, verbose_name="Valor da Gorjeta")
     observacoes_finalizacao = models.TextField(blank=True, null=True, verbose_name="Observações do Cliente na Finalização")
 
-    # O campo 'couvert_artistico' FOI REMOVIDO DAQUI
-
-
     def __str__(self):
-        return f"Pedido {self.id} - Mesa {self.mesa.numero if self.mesa else 'N/A'} - Status: {self.get_status_display()}"
+        return f"Pedido {self.id} - Mesa {self.mesa.numero if self.mesa else 'N/A'} ({self.estabelecimento.nome}) - Status: {self.get_status_display()}"
 
     def update_valor_total(self):
         # MENSAGEM DE DEBUG MUITO DETALHADA
@@ -43,7 +49,7 @@ class Pedido(models.Model):
         print(f"DEBUG: Todos os ItemPedido do Pedido {self.id}:")
         for item in all_itens_pedido:
             status_envio = item.envio_cozinha.status if item.envio_cozinha else "N/A (não enviado)"
-            print(f"  - ItemPedido ID: {item.id}, Cardapio: {item.cardapio.nome}, Subtotal: {item.subtotal}, EnvioCozinha ID: {item.envio_cozinha.id if item.envio_cozinha else 'N/A'}, Status Envio: {status_envio}")
+            print(f"   - ItemPedido ID: {item.id}, Cardapio: {item.cardapio.nome}, Subtotal: {item.subtotal}, EnvioCozinha ID: {item.envio_cozinha.id if item.envio_cozinha else 'N/A'}, Status Envio: {status_envio}")
 
         # Construir o filtro para itens elegíveis:
         # 1. Itens que NÃO POSSUEM um envio_cozinha (ainda estão no "carrinho" do pedido)
@@ -56,7 +62,7 @@ class Pedido(models.Model):
         print(f"DEBUG: Itens **elegíveis** para a soma (queryset filtrado):")
         for item in eligible_items_queryset:
             status_envio = item.envio_cozinha.status if item.envio_cozinha else "N/A (não enviado)"
-            print(f"  - ItemPedido ID: {item.id}, Cardapio: {item.cardapio.nome}, Subtotal: {item.subtotal}, EnvioCozinha ID: {item.envio_cozinha.id if item.envio_cozinha else 'N/A'}, Status Envio: {status_envio}")
+            print(f"   - ItemPedido ID: {item.id}, Cardapio: {item.cardapio.nome}, Subtotal: {item.subtotal}, EnvioCozinha ID: {item.envio_cozinha.id if item.envio_cozinha else 'N/A'}, Status Envio: {status_envio}")
 
 
         total_sum_result = eligible_items_queryset.aggregate(total_sum=Sum('subtotal')).get('total_sum')
@@ -66,12 +72,6 @@ class Pedido(models.Model):
         if self.gorjeta is not None:
             total += self.gorjeta
             print(f"DEBUG: Gorjeta ({self.gorjeta}) adicionada ao total.")
-
-        # O CÓDIGO QUE ADICIONAVA O COUVERT ARTÍSTICO FOI REMOVIDO DAQUI
-        # if self.couvert_artistico is not None:
-        #     total += self.couvert_artistico
-        #     print(f"DEBUG: Couvert Artístico ({self.couvert_artistico}) adicionado ao total.")
-
 
         print(f"DEBUG: Soma CALCULADA para itens elegíveis (incluindo gorjeta, SEM couvert agora): {total}")
 
@@ -92,6 +92,16 @@ class Pedido(models.Model):
 
 
 class ItemPedido(models.Model):
+    # Foreign Key para Estabelecimento - ItemPedido deve herdar do Pedido, ou ter sua própria FK
+    # Para simplicidade e consistência, cada ItemPedido também apontará para um Estabelecimento.
+    # Em um cenário real, você pode optar por derivar isso do Pedido, mas ter a FK direta evita JOINs complexos em algumas queries.
+    estabelecimento = models.ForeignKey(
+        Estabelecimento,
+        on_delete=models.CASCADE,
+        related_name='itens_pedido', # Nome diferente do Pedido para evitar conflito
+        verbose_name="Estabelecimento"
+    )
+
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE, related_name='itens_pedido', verbose_name="Pedido")
     cardapio = models.ForeignKey(ItemCardapio, on_delete=models.CASCADE, verbose_name="Item do Cardápio")
     quantidade = models.PositiveIntegerField(default=1, verbose_name="Quantidade")
@@ -101,7 +111,7 @@ class ItemPedido(models.Model):
     envio_cozinha = models.ForeignKey('EnvioCozinha', on_delete=models.SET_NULL, null=True, blank=True, related_name='itens_enviados', verbose_name="Envio para Cozinha")
 
     def __str__(self):
-        return f"{self.quantidade}x {self.cardapio.nome} (Pedido {self.pedido.id})"
+        return f"{self.quantidade}x {self.cardapio.nome} (Pedido {self.pedido.id} - {self.estabelecimento.nome})"
 
     def save(self, *args, **kwargs):
         print(f"DEBUG: ItemPedido.save() - Item {self.id if self.id else 'NOVO'} antes do cálculo do subtotal. Cardapio ID: {self.cardapio.id if self.cardapio else 'N/A'}, Quantidade: {self.quantidade}")

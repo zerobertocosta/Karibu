@@ -29,7 +29,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'corsheaders', 
-    'estabelecimento', # Certifique-se de que todos os seus apps estão aqui
     'cliente',       # Certifique-se de que todos os seus apps estão aqui
     'mesa',          # Certifique-se de que todos os seus apps estão aqui
     'cardapio',      # Certifique-se de que todos os seus apps estão aqui

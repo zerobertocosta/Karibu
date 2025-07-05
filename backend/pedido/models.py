@@ -1,10 +1,7 @@
-# backend/pedido/models.py (Este é o arquivo principal, não a pasta!)
-# Este arquivo agora serve apenas para importar todos os seus modelos do subpacote 'models'
+# backend/pedido/models.py (Conteúdo principal, apenas para importação)
 
-from .models.mesa import Mesa
-from .models.cardapio import CategoriaCardapio, Cardapio
+# Este arquivo agora serve apenas para importar todos os seus modelos do subpacote 'models'
 from .models.pedido import Pedido, ItemPedido
 from .models.envio_cozinha import EnvioCozinha
-
-# Se você tiver algum modelo abstrato ou base, importe-o também
-# from .models.base import MeuModeloBase
+# Certifique-se que esses arquivos realmente existem e os modelos estão definidos neles.
+# Não precisa importar Mesa ou Cardapio aqui, eles já são importados onde são usados.
