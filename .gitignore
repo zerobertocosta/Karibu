@@ -1,0 +1,31 @@
+# Ignorar o ambiente virtual
+venv/
+*.env
+.env
+
+# Ignorar arquivos do Django
+__pycache__/
+*.pyc
+*.sqlite3
+/media/
+/static/
+
+# Ignorar arquivos de editor/IDE
+.vscode/
+.idea/
+*.swp
+*~
+*.log
+
+# Ignorar arquivos específicos do Django
+db.sqlite3
+local_settings.py
+
+# Ignorar arquivos de upload de usuário
+# Se você configurar MEDIA_ROOT fora do projeto principal, pode não precisar desta linha
+# Mas se estiver dentro do backend/, é bom ignorar
+*/media/
+
+# Ignorar arquivos de sistema operacional
+.DS_Store # macOS
+Thumbs.db # Windows
