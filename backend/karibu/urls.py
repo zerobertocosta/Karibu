@@ -17,4 +17,5 @@ urlpatterns = [
     path('api/usuarios/', include('usuarios.urls')),
     path('api/cardapio/', include('cardapio.urls')),
     path('api/clientes/', include('cliente.urls')), # <-- Adicione esta linha
+    path('api/mesas/', include('mesa.urls')),
 ]
