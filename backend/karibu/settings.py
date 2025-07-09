@@ -1,5 +1,3 @@
-# backend/karibu/settings.py
-
 """
 Django settings for karibu project.
 
@@ -13,23 +11,29 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
-from datetime import timedelta # Importar timedelta para JWT
+import os # Importar o módulo os para caminhos
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure--&5^*fu^$(95$s_#=5r*tr30sgcbi-j)1u)x&m8y82_(p^z^%#'
+SECRET_KEY = 'django-insecure-m#m=j@a#p+@z1e52#q@&a)a!*y!^@^=y8q$g_67(l#x7b^v8^w'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
 
+# Adicionar CORS_ALLOWED_ORIGINS para permitir requisições do frontend
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080", # Para o seu frontend Vue.js em desenvolvimento
+    # "http://127.0.0.1:8080", # Se preferir usar 127.0.0.1
+    # Adicione aqui os domínios de produção quando for fazer deploy
+]
 
 # Application definition
 
@@ -40,23 +44,25 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Meus Apps
+    # Third-party apps
+    'rest_framework',
+    'rest_framework_simplejwt',
+    'corsheaders', # Django CORS Headers
+    # My apps
     'configuracao',
     'usuarios',
-    'core',
+    'core', # <-- Certifique-se de que 'core' está aqui!
     'cardapio',
     'cliente',
     'mesa',
     'pedido',
     'chamada',
-    # Django REST Framework
-    'rest_framework', # Adicionar DRF
-    'rest_framework_simplejwt', # Adicionar JWT
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware', # Adicionar CorsMiddleware AQUI
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -73,6 +79,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -117,9 +124,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pt-br' # Altere para português do Brasil
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'America/Sao_Paulo' # Altere para o fuso horário de São Paulo
 
 USE_I18N = True
 
@@ -130,34 +137,42 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles') # Para produção
+
+# Media files (user-uploaded content, like images)
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') # Onde as imagens serão armazenadas
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Configurações do Django REST Framework
+
+# Django REST Framework settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_PERMISSION_CLASSES': (
-        'rest_framework.permissions.IsAuthenticated', # Permissão padrão para todos os endpoints serem autenticados por padrão
+        'core.permissions.IsAuthenticatedAndBelongsToEstablishment', # <-- Essa é a linha importante que adicionamos!
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 10
 }
 
-# Configurações do Django REST Framework Simple JWT
+# Simple JWT settings (optional, you can customize token lifetimes)
+from datetime import timedelta
+
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5), # Tempo de vida do token de acesso
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),   # Tempo de vida do token de refresh
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': False,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': SECRET_KEY, # Reutiliza a SECRET_KEY do Django
+    'SIGNING_KEY': SECRET_KEY,
     'VERIFYING_KEY': None,
     'AUDIENCE': None,
     'ISSUER': None,
