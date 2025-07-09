@@ -1,12 +1,16 @@
-# backend/usuarios/urls.py
+# backend/karibu/usuarios/urls.py
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import UserViewSet, PerfilViewSet
+# REMOVA FuncaoViewSet daqui, se estiver!
+from .views import UsuarioViewSet, PerfilViewSet, EstabelecimentoViewSet 
 
 router = DefaultRouter()
-router.register(r'users', UserViewSet)
-router.register(r'perfis', PerfilViewSet) # Endpoint para perfis
+router.register(r'users', UsuarioViewSet) # Mudamos de 'usuarios' para 'users' no frontend
+router.register(r'perfis', PerfilViewSet)
+router.register(r'estabelecimentos', EstabelecimentoViewSet)
+# REMOVA A LINHA ABAIXO, SE ELA EXISTIR:
+# router.register(r'funcoes', FuncaoViewSet) 
 
 urlpatterns = [
     path('', include(router.urls)),
