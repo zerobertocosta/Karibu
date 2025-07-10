@@ -19,7 +19,7 @@
 </template>
 
 <script>
-import api from '@/services/api'; // Importa a instância do Axios configurada
+import api from '@/services/api';
 
 export default {
   name: 'LoginView',
@@ -34,8 +34,7 @@ export default {
   methods: {
     async handleLogin() {
       this.loading = true;
-      this.error = null; // Limpa erros anteriores
-
+      this.error = null;
       try {
         const response = await api.post('token/', { // Endpoint para obter o token JWT
           username: this.username,
@@ -44,12 +43,13 @@ export default {
 
         // Armazena os tokens no localStorage
         localStorage.setItem('access_token', response.data.access);
-        localStorage.setItem('refresh_token', response.data.refresh); // O refresh token é importante para renovar o access token
+        localStorage.setItem('refresh_token', response.data.refresh);
+        
+        // >>>>> CORREÇÃO: SALVAR O USERNAME NO LOCALSTORAGE <<<<<
+        localStorage.setItem('username', this.username); 
 
         // Redireciona o usuário para uma página protegida após o login bem-sucedido
-        // Por exemplo, para a tela de gestão de usuários
-        this.$router.push('/users');
-
+        this.$router.push('/users'); // Ou para a dashboard principal
       } catch (err) {
         console.error('Erro no login:', err);
         if (err.response && err.response.status === 401) {

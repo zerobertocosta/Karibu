@@ -6,8 +6,7 @@ from rest_framework.routers import DefaultRouter
 from .views import UsuarioViewSet, PerfilViewSet, EstabelecimentoViewSet 
 
 router = DefaultRouter()
-router.register(r'users', UsuarioViewSet) # Mudamos de 'usuarios' para 'users' no frontend
-router.register(r'perfis', PerfilViewSet)
+router.register(r'users', UsuarioViewSet, basename='user')
 router.register(r'estabelecimentos', EstabelecimentoViewSet)
 # REMOVA A LINHA ABAIXO, SE ELA EXISTIR:
 # router.register(r'funcoes', FuncaoViewSet) 

@@ -1,31 +1,48 @@
-// frontend/src/router/index.js
-
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
-import UserManagementView from '../views/UserManagementView.vue';
-import LoginView from '../views/LoginView.vue'; // <-- Importe o novo componente de Login
+import AboutView from '../views/AboutView.vue';
+import LoginView from '../views/LoginView.vue';
+import UserManagementView from '../views/UserManagementView.vue'; // Sua view de lista de usuários
+import UserForm from '../views/UserForm.vue'; // Nova view para adicionar/editar usuários
 
 const routes = [
   {
     path: '/',
     name: 'home',
-    component: HomeView
+    component: HomeView,
+    meta: { requiresAuth: false } // Home é pública
   },
   {
     path: '/about',
     name: 'about',
-    component: () => import(/* webpackChunkName: "about" */ '../views/AboutView.vue')
+    component: AboutView,
+    meta: { requiresAuth: false } // About é pública
+  },
+  {
+    path: '/login',
+    name: 'login',
+    component: LoginView,
+    meta: { requiresAuth: false } // Login é pública
   },
   {
     path: '/users',
     name: 'user-management',
-    component: UserManagementView
+    component: UserManagementView,
+    meta: { requiresAuth: true } // Gestão de usuários requer autenticação
   },
   {
-    path: '/login', // <-- Nova rota para a tela de login
-    name: 'login',
-    component: LoginView
-  }
+    path: '/users/add', // Rota para adicionar novo usuário
+    name: 'add-user',
+    component: UserForm,
+    meta: { requiresAuth: true } // Adição de usuário requer autenticação
+  },
+  {
+    path: '/users/:userId/edit', // Rota para editar usuário existente
+    name: 'edit-user',
+    component: UserForm,
+    props: true, // Isso permite que ':userId' seja passado como prop para UserForm
+    meta: { requiresAuth: true } // Edição de usuário requer autenticação
+  },
 ];
 
 const router = createRouter({
@@ -33,22 +50,23 @@ const router = createRouter({
   routes
 });
 
-// Guarda de navegação para rotas protegidas
+// Guarda de navegação global
 router.beforeEach((to, from, next) => {
-  const publicPages = ['/', '/about', '/login']; // <-- Adicione '/login' às rotas públicas
-  const authRequired = !publicPages.includes(to.path);
+  const requiresAuth = to.meta.requiresAuth; // Verifica se a rota exige autenticação
   const loggedIn = localStorage.getItem('access_token');
 
-  if (authRequired && !loggedIn) {
-    // Se a rota exige autenticação e o usuário não está logado, redireciona para login
+  if (requiresAuth && !loggedIn) {
+    // Se a rota exige autenticação E o usuário não está logado, redireciona para login
     return next('/login');
   }
-  // Se o usuário está logado e tenta acessar a página de login, redireciona para a home ou users
-  if (to.path === '/login' && loggedIn) {
-    return next('/users'); // Ou para a dashboard principal
-  }
-  next(); // Permite a navegação
-});
 
+  if (to.path === '/login' && loggedIn) {
+    // Se o usuário já está logado e tenta ir para a página de login, redireciona para /users
+    return next('/users');
+  }
+
+  // Permite a navegação
+  next();
+});
 
 export default router;

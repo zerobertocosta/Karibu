@@ -1,66 +1,42 @@
-# backend/karibu/usuarios/views.py
-
+from rest_framework import viewsets, permissions
 from django.contrib.auth import get_user_model
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated, DjangoModelPermissions # Removido AllowAny se não for usado
-from rest_framework.response import Response
-from django_filters.rest_framework import DjangoFilterBackend
+from .models import Perfil, Estabelecimento
+from .serializers import UserSerializer, PerfilSerializer, EstabelecimentoSerializer
+# IMPORTAR A PERMISSÃO PERSONALIZADA AQUI:
+from .permissions import IsSuperuserOrCreateUserInOwnEstablishment # <--- ADICIONADA/ATUALIZADA ESTA LINHA
 
-# Importe seus models e serializers do aplicativo 'usuarios'
-# REMOVA 'Funcao' daqui!
-from .models import Perfil, Estabelecimento 
-from .serializers import (
-    UsuarioSerializer, 
-    PerfilSerializer, 
-    EstabelecimentoSerializer, 
-    # REMOVA FuncaoSerializer daqui!
-)
+User = get_user_model()
 
-# Importe sua permissão personalizada EstablishmentPermission
-from .permissions import EstablishmentPermission 
-
-User = get_user_model() 
-
-# ViewSet para Gerenciamento de Usuários (sem mudanças neste)
 class UsuarioViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all().order_by('id')
-    serializer_class = UsuarioSerializer
-    permission_classes = [IsAuthenticated, DjangoModelPermissions, EstablishmentPermission] 
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['id', 'username', 'email', 'perfil__estabelecimento', 'is_active'] 
+    # REMOVIDO: queryset = User.objects.all()
+    serializer_class = UserSerializer
+    # ATUALIZADO: Usar a permissão personalizada
+    permission_classes = [IsSuperuserOrCreateUserInOwnEstablishment]
 
+    # NOVO: Implementar get_queryset para filtrar a lista de usuários
     def get_queryset(self):
-        user = self.request.user
-        if user.is_superuser:
-            return User.objects.all().order_by('id')
-        if hasattr(user, 'perfil') and user.perfil.estabelecimento:
-            return User.objects.filter(perfil__estabelecimento=user.perfil.estabelecimento).order_by('id')
+        # Superusuários veem todos os usuários
+        if self.request.user.is_superuser:
+            return User.objects.all()
+        
+        # Gestores (autenticados, não superusuários) veem apenas usuários do seu estabelecimento
+        elif hasattr(self.request.user, 'perfil') and self.request.user.perfil.estabelecimento:
+            gestor_estabelecimento = self.request.user.perfil.estabelecimento
+            # Filtra usuários cujo perfil está associado ao mesmo estabelecimento do gestor
+            return User.objects.filter(perfil__estabelecimento=gestor_estabelecimento)
+        
+        # Para outros usuários (garçons, caixas, etc.) ou usuários sem perfil/estabelecimento, não mostre nada
         return User.objects.none()
 
-# ViewSet para Gerenciamento de Perfis (sem mudanças neste)
 class PerfilViewSet(viewsets.ModelViewSet):
     queryset = Perfil.objects.all()
     serializer_class = PerfilSerializer
-    permission_classes = [IsAuthenticated, DjangoModelPermissions, EstablishmentPermission] 
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['estabelecimento', 'funcao'] 
+    # Adapte as permissões para o PerfilViewSet. Gestores só devem poder ver/editar perfis do seu est.
+    permission_classes = [IsSuperuserOrCreateUserInOwnEstablishment]
 
-    def get_queryset(self):
-        user = self.request.user
-        if user.is_superuser:
-            return Perfil.objects.all()
-        if hasattr(user, 'perfil') and user.perfil.estabelecimento:
-            return Perfil.objects.filter(estabelecimento=user.perfil.estabelecimento)
-        return Perfil.objects.none()
-
-# ViewSet para Gerenciamento de Estabelecimentos (sem mudanças neste)
 class EstabelecimentoViewSet(viewsets.ModelViewSet):
     queryset = Estabelecimento.objects.all()
     serializer_class = EstabelecimentoSerializer
-    permission_classes = [IsAuthenticated, DjangoModelPermissions]
-
-# REMOVA O BLOCO INTEIRO DE FuncaoViewSet ABAIXO
-# class FuncaoViewSet(viewsets.ModelViewSet):
-#    queryset = Funcao.objects.all()
-#    serializer_class = FuncaoSerializer
-#    permission_classes = [IsAuthenticated]
+    # Lista de estabelecimentos pode ser vista por qualquer usuário autenticado para seleção
+    permission_classes = [permissions.IsAuthenticated]
+    # Se quiser que NÃO LOGADOS possam ver, mude para: permissions.AllowAny

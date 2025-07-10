@@ -1,19 +1,18 @@
-// frontend/src/services/api.js
-
 import axios from 'axios';
-import router from '@/router'; // Importe a instância do router para redirecionamento
 
-// Crie uma instância do Axios
 const api = axios.create({
-  baseURL: 'http://127.0.0.1:8000/api/',
+  baseURL: 'http://127.0.0.1:8000/api/', // Base URL para sua API Django
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
-// Interceptor de Requisição: Adiciona o token JWT a cada requisição
+// Interceptor para adicionar o token de acesso às requisições
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const accessToken = localStorage.getItem('access_token');
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
@@ -22,24 +21,47 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor de Resposta: Lida com erros 401/403 (Não Autorizado/Proibido)
+// Interceptor para lidar com a expiração do token e renovação
 api.interceptors.response.use(
-  (response) => response, // Se a resposta for sucesso, apenas passe-a
+  (response) => response,
   async (error) => {
-    // Se o erro for de resposta do servidor e o status for 401 ou 403
-    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-      console.warn('Token inválido ou expirado. Redirecionando para o login.');
-      // Limpa todos os tokens armazenados
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('refresh_token');
+    const originalRequest = error.config;
+    // Se for um erro 401 (Unauthorized) e não for uma requisição de refresh token, tenta renovar
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true; // Marca a requisição original para evitar loops infinitos
 
-      // Redireciona para a página de login
-      // Verifica se já não está na página de login para evitar loop de redirecionamento
-      if (router.currentRoute.value.path !== '/login') {
-        router.push('/login');
+      const refreshToken = localStorage.getItem('refresh_token');
+      if (refreshToken) {
+        try {
+          // Tenta obter um novo access token usando o refresh token
+          const response = await axios.post('http://127.0.0.1:8000/api/token/refresh/', {
+            refresh: refreshToken,
+          });
+
+          const newAccessToken = response.data.access;
+          localStorage.setItem('access_token', newAccessToken);
+
+          // Atualiza o cabeçalho da requisição original com o novo token
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return api(originalRequest); // Repete a requisição original
+        } catch (refreshError) {
+          console.error('Erro ao renovar token:', refreshError);
+          // Se a renovação falhar, remove os tokens e redireciona para login
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('username'); // Limpar o username também
+          window.location.href = '/login'; // Redireciona para a página de login
+          return Promise.reject(refreshError);
+        }
+      } else {
+        // Não há refresh token, redireciona para login
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('username'); // Limpar o username também
+        window.location.href = '/login';
       }
     }
-    return Promise.reject(error); // Rejeita a promise para que o erro seja tratado nos componentes
+    return Promise.reject(error);
   }
 );
 
