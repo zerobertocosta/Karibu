@@ -45,7 +45,7 @@ class UsuarioViewSet(EstablishmentFilteredViewSet, viewsets.ModelViewSet):
             return User.objects.all()
         
         # Se for gerente, retorna apenas os usuários do seu estabelecimento
-        if hasattr(self.request.user, 'perfil') and self.request.user.perfil.is_gestor: # Corrigido para is_gestor
+        if hasattr(self.request.user, 'perfil') and self.request.user.perfil.is_gestor:
             return User.objects.filter(perfil__estabelecimento=self.request.user.perfil.estabelecimento)
         
         # Para garçons, cozinheiros, caixas, etc., o queryset para 'list' deve ser vazio
@@ -62,38 +62,25 @@ class UsuarioViewSet(EstablishmentFilteredViewSet, viewsets.ModelViewSet):
         # Para gerentes, o sistema vincula automaticamente ao seu estabelecimento.
 
         if self.request.user.is_superuser:
-            # Se o superusuário não especificar 'estabelecimento' no payload,
-            # ele pode criar usuários sem vínculo (se o serializer permitir).
-            # Se precisar que superusuário SEMPRE vincule, adicione validação aqui
-            # ou no serializer para 'estabelecimento' ser obrigatório para superuser.
-            
-            # Se o superusuário passou o ID do estabelecimento no corpo da requisição:
             estabelecimento_id = serializer.validated_data.get('perfil', {}).get('estabelecimento')
             if estabelecimento_id:
                 try:
                     estabelecimento_instance = Estabelecimento.objects.get(id=estabelecimento_id)
-                    # Cria o usuário e depois o perfil vinculado ao estabelecimento
                     user = serializer.save()
                     if hasattr(user, 'perfil'):
                         user.perfil.estabelecimento = estabelecimento_instance
-                        # Se o papel for passado no payload do superuser, use-o
                         if 'perfil' in serializer.validated_data and 'papel' in serializer.validated_data['perfil']:
                              user.perfil.papel = serializer.validated_data['perfil']['papel']
                         user.perfil.save()
-                    else: # Se o serializer não criar o perfil automaticamente
-                        papel = serializer.validated_data.get('perfil', {}).get('papel', Perfil.GARCOM) # Default para Garçom
+                    else: 
+                        papel = serializer.validated_data.get('perfil', {}).get('papel', Perfil.GARCOM) 
                         Perfil.objects.create(usuario=user, estabelecimento=estabelecimento_instance, papel=papel)
 
                 except Estabelecimento.DoesNotExist:
                     raise ValueError(f"Estabelecimento com ID '{estabelecimento_id}' não encontrado.")
             else:
-                # Se superusuário não especificou estabelecimento, cria sem vincular
-                # (Assumindo que o Perfil pode ser criado sem estabelecimento, ou será vinculado depois)
                 super().perform_create(serializer)
         else:
-            # Gerentes criam usuários vinculados ao seu próprio estabelecimento
-            # O mixin EstablishmentFilteredViewSet já injeta o estabelecimento.
-            # Garante que o papel seja default ou venha do serializer.
             super().perform_create(serializer) 
             
             
@@ -125,10 +112,40 @@ class PerfilViewSet(EstablishmentFilteredViewSet, viewsets.ModelViewSet):
 class EstabelecimentoViewSet(viewsets.ModelViewSet):
     """
     ViewSet para o modelo Estabelecimento.
-    Apenas superusuários (IsAdminUser) podem listar, criar, atualizar ou deletar estabelecimentos.
-    Este ViewSet NÃO usa EstablishmentFilteredViewSet, pois gerencia os próprios tenants.
+    Superusuários podem gerenciar todos os estabelecimentos.
+    Usuários autenticados (como gerentes) só podem visualizar o(s) seu(s) próprio(s) estabelecimento(s).
     """
-    queryset = Estabelecimento.objects.all()
     serializer_class = EstabelecimentoSerializer
-    # Permissão para garantir que apenas superusuários possam gerenciar estabelecimentos.
-    permission_classes = [permissions.IsAdminUser] # Apenas superusers podem gerenciar estabelecimentos raiz
+    queryset = Estabelecimento.objects.all() # Queryset base, será filtrado pelo get_queryset
+
+    def get_permissions(self):
+        """
+        Define as permissões baseadas na ação.
+        """
+        if self.action in ['list', 'retrieve']:
+            # Para listar e detalhar, permite superusuário ver tudo, e autenticados verem o seu.
+            self.permission_classes = [permissions.IsAuthenticated] 
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
+            # Para criar, atualizar e deletar, apenas superusuários.
+            self.permission_classes = [permissions.IsAdminUser]
+        else:
+            # Permissão padrão para outras ações, se houver.
+            self.permission_classes = [permissions.IsAuthenticated]
+        return [permission() for permission in self.permission_classes]
+
+    def get_queryset(self):
+        """
+        Filtra o queryset de estabelecimentos baseado no papel do usuário.
+        """
+        if self.request.user.is_superuser:
+            return Estabelecimento.objects.all()
+        
+        # Se o usuário está autenticado e tem um perfil com estabelecimento
+        if self.request.user.is_authenticated and \
+           hasattr(self.request.user, 'perfil') and \
+           self.request.user.perfil.estabelecimento:
+            # Retorna apenas o estabelecimento ao qual o perfil do usuário está vinculado
+            return Estabelecimento.objects.filter(id=self.request.user.perfil.estabelecimento.id)
+        
+        # Para qualquer outro caso (usuário sem perfil/estabelecimento, ou não autenticado)
+        return Estabelecimento.objects.none()
