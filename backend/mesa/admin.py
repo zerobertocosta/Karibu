@@ -13,7 +13,8 @@ class MesaAdmin(admin.ModelAdmin):
     list_editable = ('status', 'capacidade')
 
     # Campo de relacionamento cru/autocompletar para Estabelecimento (para superusuários)
-    raw_id_fields = ('estabelecimento',)
+    #raw_id_fields = ('estabelecimento',)
+    autocomplete_fields = ('estabelecimento',)
 
     # Método para exibir o nome do estabelecimento na list_display
     def get_estabelecimento_nome(self, obj):
