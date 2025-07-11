@@ -36,20 +36,20 @@ export default {
       this.loading = true;
       this.error = null;
       try {
-        const response = await api.post('token/', { // Endpoint para obter o token JWT
+        const response = await api.post('token/', {
           username: this.username,
           password: this.password,
         });
 
-        // Armazena os tokens no localStorage
         localStorage.setItem('access_token', response.data.access);
         localStorage.setItem('refresh_token', response.data.refresh);
-        
-        // >>>>> CORREÇÃO: SALVAR O USERNAME NO LOCALSTORAGE <<<<<
-        localStorage.setItem('username', this.username); 
+        localStorage.setItem('username', this.username); // Continua salvando o username
+        // Se você estiver salvando o papel do usuário (role), salve aqui também!
+        // Exemplo: localStorage.setItem('user_role', response.data.user.perfil.papel);
+        // Ou se o backend já retornar no payload do token
 
-        // Redireciona o usuário para uma página protegida após o login bem-sucedido
-        this.$router.push('/users'); // Ou para a dashboard principal
+        // >>> CORREÇÃO AQUI: REDIRECIONAR PARA A HOMEPAGE APÓS LOGIN <<<
+        this.$router.push('/'); // Redireciona para a HomeView
       } catch (err) {
         console.error('Erro no login:', err);
         if (err.response && err.response.status === 401) {
@@ -71,16 +71,14 @@ export default {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 60px); /* Ajusta para ocupar a tela menos o nav */
+  min-height: calc(100vh - 60px);
   padding: 20px;
   background-color: #f4f7f6;
 }
-
 h1 {
   color: #333;
   margin-bottom: 30px;
 }
-
 .login-form {
   background-color: #ffffff;
   padding: 40px;
@@ -90,31 +88,27 @@ h1 {
   max-width: 400px;
   text-align: left;
 }
-
 .form-group {
   margin-bottom: 20px;
 }
-
 .form-group label {
   display: block;
   margin-bottom: 8px;
   font-weight: bold;
   color: #555;
 }
-
 .form-group input[type="text"],
 .form-group input[type="password"] {
-  width: calc(100% - 20px); /* Ajusta a largura considerando o padding */
+  width: calc(100% - 20px);
   padding: 10px;
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 16px;
 }
-
 button[type="submit"] {
   width: 100%;
   padding: 12px;
-  background-color: #007bff; /* Cor primária, pode ser customizada depois */
+  background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
@@ -122,16 +116,13 @@ button[type="submit"] {
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-
 button[type="submit"]:hover:not(:disabled) {
   background-color: #0056b3;
 }
-
 button[type="submit"]:disabled {
   background-color: #a0cbed;
   cursor: not-allowed;
 }
-
 .error-message {
   color: #dc3545;
   margin-top: 15px;

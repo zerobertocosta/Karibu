@@ -3,8 +3,7 @@
     <nav>
       <router-link to="/">Home</router-link> |
       <router-link to="/about">About</router-link> |
-      <router-link to="/users">Gestão de Usuários</router-link> |
-
+      
       <template v-if="!isLoggedIn">
         <router-link to="/login">Login</router-link>
       </template>
