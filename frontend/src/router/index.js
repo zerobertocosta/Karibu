@@ -7,10 +7,9 @@ import LoginView from '../views/LoginView.vue';
 import UserManagementView from '../views/UserManagementView.vue';
 import UserForm from '../views/UserForm.vue';
 import CategoriaListView from '../views/cardapio/CategoriaListView.vue';
-
-// --- NOVA IMPORTAÇÃO AQUI ---
 import CategoriaForm from '../views/cardapio/CategoriaForm.vue';
-// --- FIM DA NOVA IMPORTAÇÃO ---
+import ItemCardapioListView from '../views/cardapio/ItemCardapioListView.vue';
+import ItemCardapioForm from '../views/cardapio/ItemCardapioForm.vue';
 
 const routes = [
     {
@@ -56,7 +55,6 @@ const routes = [
         component: CategoriaListView,
         meta: { requiresAuth: true }
     },
-    // --- NOVAS ROTAS AQUI ---
     {
         path: '/cardapio/categorias/add',
         name: 'add-categoria',
@@ -67,10 +65,28 @@ const routes = [
         path: '/cardapio/categorias/:categoriaId/edit',
         name: 'edit-categoria',
         component: CategoriaForm,
-        props: true, // Permite que o ID seja passado como prop
+        props: true,
         meta: { requiresAuth: true }
     },
-    // --- FIM DAS NOVAS ROTAS ---
+    {
+        path: '/cardapio/itens',
+        name: 'item-list',
+        component: ItemCardapioListView,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/cardapio/itens/add',
+        name: 'add-item-cardapio',
+        component: ItemCardapioForm,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/cardapio/itens/:itemId/edit',
+        name: 'edit-item-cardapio',
+        component: ItemCardapioForm,
+        props: true,
+        meta: { requiresAuth: true }
+    },
 ];
 
 const router = createRouter({

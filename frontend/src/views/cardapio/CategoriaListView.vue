@@ -6,15 +6,16 @@
     
     <div v-else-if="categorias.length > 0">
       <ul class="categoria-list">
-        <li v-for="categoria in categorias" :key="categoria.id" class="categoria-item">
-          <p><strong>Nome:</strong> {{ categoria.nome }}</p>
-          <p><strong>Descrição:</strong> {{ categoria.descricao || 'N/A' }}</p>
-          <p><strong>Ativa:</strong> {{ categoria.ativa ? 'Sim' : 'Não' }}</p>
-          <p><strong>Ordem:</strong> {{ categoria.ordem }}</p>
-          <p><strong>Estabelecimento:</strong> {{ categoria.estabelecimento }}</p>
-          <div class="item-actions">
+        <li v-for="categoria in categorias" :key="categoria.id" class="categoria-card">
+          <div class="categoria-details">
+            <h3>{{ categoria.nome }}</h3>
+            <p><strong>Descrição:</strong> {{ categoria.descricao || 'N/A' }}</p>
+            <p><strong>Ativa:</strong> {{ categoria.ativa ? 'Sim' : 'Não' }}</p>
+            <p><strong>Ordem:</strong> {{ categoria.ordem }}</p>
+            <p><strong>Estabelecimento:</strong> {{ categoria.estabelecimento_nome || 'N/A' }}</p> </div>
+          <div class="categoria-actions">
             <button @click="editCategoria(categoria.id)" class="btn-edit">Editar</button>
-            <button @click="confirmDelete(categoria.id)" class="btn-delete">Excluir</button>
+            <button @click="confirmDeleteCategoria(categoria.id)" class="btn-delete">Excluir</button>
           </div>
         </li>
       </ul>
@@ -60,20 +61,17 @@ export default {
         this.loading = false;
       }
     },
-    // NOVO MÉTODO PARA ADICIONAR CATEGORIA
     addCategoria() {
-      this.$router.push({ name: 'add-categoria' }); // Redireciona para a rota de adicionar
+      this.$router.push({ name: 'add-categoria' });
     },
-    // MÉTODO PARA EDITAR CATEGORIA (futuro)
     editCategoria(id) {
-      this.$router.push({ name: 'edit-categoria', params: { categoriaId: id } }); // Redireciona para a rota de editar
+      this.$router.push({ name: 'edit-categoria', params: { categoriaId: id } });
     },
-    // MÉTODO PARA CONFIRMAR EXCLUSÃO (futuro)
-    async confirmDelete(id) {
-      if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+    async confirmDeleteCategoria(id) {
+      if (confirm('Tem certeza que deseja excluir esta categoria? Isso também pode afetar os itens associados!')) {
         try {
           await api.delete(`/cardapio/categorias/${id}/`);
-          this.categorias = this.categorias.filter(cat => cat.id !== id);
+          this.categorias = this.categorias.filter(categoria => categoria.id !== id);
           alert('Categoria excluída com sucesso!');
         } catch (err) {
           console.error('Erro ao excluir categoria:', err);
@@ -106,32 +104,77 @@ h1 {
   list-style: none;
   padding: 0;
   margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
 }
 
-.categoria-item {
+.categoria-card {
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
   border-radius: 8px;
   padding: 20px;
-  margin-bottom: 15px;
   text-align: left;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative; /* Para posicionar os botões de ação */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.categoria-item:hover {
+.categoria-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
 
-.categoria-item p {
-  margin: 5px 0;
-  color: #555;
-  font-size: 1.05em;
+.categoria-details h3 {
+  color: #333;
+  margin-top: 0;
+  margin-bottom: 10px;
+  font-size: 1.5em;
 }
 
-.categoria-item strong {
+.categoria-details p {
+  margin: 5px 0;
+  color: #555;
+  font-size: 0.95em;
+}
+
+.categoria-details strong {
   color: #333;
+}
+
+.categoria-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-edit, .btn-delete {
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.btn-edit {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.btn-edit:hover {
+  background-color: #e0a800;
+}
+
+.btn-delete {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #c82333;
 }
 
 .error-message {
@@ -176,38 +219,9 @@ h1 {
   background-color: #0056b3;
 }
 
-/* Estilos para os botões de ação (editar/excluir) */
-.item-actions {
-  margin-top: 15px;
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end; /* Alinha os botões à direita */
-}
-
-.btn-edit, .btn-delete {
-  padding: 8px 15px;
-  border-radius: 5px;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-  transition: background-color 0.3s ease;
-}
-
-.btn-edit {
-  background-color: #ffc107; /* Amarelo */
-  color: #333;
-}
-
-.btn-edit:hover {
-  background-color: #e0a800;
-}
-
-.btn-delete {
-  background-color: #dc3545; /* Vermelho */
-  color: white;
-}
-
-.btn-delete:hover {
-  background-color: #c82333;
+@media (max-width: 768px) {
+  .categoria-list {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
