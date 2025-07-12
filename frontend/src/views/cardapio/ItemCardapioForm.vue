@@ -11,7 +11,7 @@
       <div class="form-group">
         <label for="categoria">Categoria:</label>
         <select id="categoria" v-model="item.categoria_id" required class="form-control">
-          <option value="">Selecione uma categoria</option>
+          <option :value="null" disabled>Selecione uma categoria</option> 
           <option v-for="cat in categoriasDisponiveis" :key="cat.id" :value="cat.id">
             {{ cat.nome }}
           </option>
@@ -66,7 +66,7 @@ export default {
     return {
       item: {
         nome: '',
-        categoria_id: '', 
+        categoria_id: null, // Alterado para null
         preco: 0.00,
         descricao: '',
         disponivel: true,
@@ -82,7 +82,10 @@ export default {
     };
   },
   async created() {
-    await this.fetchCategorias();
+    // 1. Carrega as categorias PRIMEIRO
+    await this.fetchCategorias(); 
+
+    // 2. SOMENTE DEPOIS de carregar as categorias, verifica se está editando e carrega o item
     if (this.itemId) {
       this.isEditing = true;
       await this.fetchItem(this.itemId);
@@ -105,9 +108,24 @@ export default {
     async fetchItem(id) {
       try {
         const response = await api.get(`/cardapio/itens/${id}/`);
+        // Aqui, precisamos ter certeza que 'categoria' retorna o UUID.
+        // Se o serializer de ItemCardapio no backend estiver usando um campo relacionado para leitura,
+        // ele pode retornar um objeto aninhado { id: '...', nome: '...' } em vez do UUID direto.
+        
+        let categoriaIdFromApi = null;
+        if (response.data.categoria) {
+            // Verifica se é um objeto com 'id' (caso o serializer aninhe a categoria)
+            if (typeof response.data.categoria === 'object' && response.data.categoria.id) {
+                categoriaIdFromApi = response.data.categoria.id;
+            } else {
+                // Caso contrário, assume que já é o UUID direto
+                categoriaIdFromApi = response.data.categoria;
+            }
+        }
+
         this.item = {
           nome: response.data.nome,
-          categoria_id: response.data.categoria_id, 
+          categoria_id: categoriaIdFromApi, // Atribui o ID extraído
           preco: parseFloat(response.data.preco),
           descricao: response.data.descricao,
           disponivel: response.data.disponivel,
@@ -125,13 +143,18 @@ export default {
       this.successMessage = null;
       try {
         let response;
+        const payload = { ...this.item };
+        if (payload.imagem === null || payload.imagem === '') {
+            delete payload.imagem;
+        }
+
         if (this.isEditing) {
-          response = await api.patch(`/cardapio/itens/${this.itemId}/`, this.item);
+          response = await api.patch(`/cardapio/itens/${this.itemId}/`, payload);
           this.successMessage = 'Item atualizado com sucesso!';
         } else {
-          response = await api.post('/cardapio/itens/', this.item);
+          response = await api.post('/cardapio/itens/', payload);
           this.successMessage = 'Item adicionado com sucesso!';
-          this.item = { nome: '', categoria_id: '', preco: 0.00, descricao: '', disponivel: true, ordem: 0, imagem: null };
+          this.item = { nome: '', categoria_id: null, preco: 0.00, descricao: '', disponivel: true, ordem: 0, imagem: null };
         }
         console.log('Resposta da API:', response.data);
       } catch (err) {
@@ -155,6 +178,7 @@ export default {
 </script>
 
 <style scoped>
+/* Seu CSS (inalterado) */
 .item-form-container {
   padding: 30px;
   max-width: 700px;
@@ -249,6 +273,12 @@ textarea.form-control {
 .btn-cancel {
   background-color: #6c757d;
   color: white;
+  padding: 12px 25px;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
 .btn-cancel:hover {
