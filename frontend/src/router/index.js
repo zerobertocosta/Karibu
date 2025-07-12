@@ -4,11 +4,12 @@ import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import AboutView from '../views/AboutView.vue';
 import LoginView from '../views/LoginView.vue';
-import UserManagementView from '../views/UserManagementView.vue'; // Sua view de lista de usuários
-import UserForm from '../views/UserForm.vue'; // Nova view para adicionar/editar usuários
+import UserManagementView from '../views/UserManagementView.vue';
+import UserForm from '../views/UserForm.vue';
+import CategoriaListView from '../views/cardapio/CategoriaListView.vue';
 
 // --- NOVA IMPORTAÇÃO AQUI ---
-import CategoriaListView from '../views/cardapio/CategoriaListView.vue'; // Importe a nova view de lista de categorias
+import CategoriaForm from '../views/cardapio/CategoriaForm.vue';
 // --- FIM DA NOVA IMPORTAÇÃO ---
 
 const routes = [
@@ -16,47 +17,60 @@ const routes = [
         path: '/',
         name: 'home',
         component: HomeView,
-        meta: { requiresAuth: false } // Home é pública
+        meta: { requiresAuth: false }
     },
     {
         path: '/about',
         name: 'about',
         component: AboutView,
-        meta: { requiresAuth: false } // About é pública
+        meta: { requiresAuth: false }
     },
     {
         path: '/login',
         name: 'login',
         component: LoginView,
-        meta: { requiresAuth: false } // Login é pública
+        meta: { requiresAuth: false }
     },
     {
         path: '/users',
         name: 'user-management',
         component: UserManagementView,
-        meta: { requiresAuth: true } // Gestão de usuários requer autenticação
+        meta: { requiresAuth: true }
     },
     {
-        path: '/users/add', // Rota para adicionar novo usuário
+        path: '/users/add',
         name: 'add-user',
         component: UserForm,
-        meta: { requiresAuth: true } // Adição de usuário requer autenticação
+        meta: { requiresAuth: true }
     },
     {
-        path: '/users/:userId/edit', // Rota para editar usuário existente
+        path: '/users/:userId/edit',
         name: 'edit-user',
         component: UserForm,
-        props: true, // Isso permite que ':userId' seja passado como prop para UserForm
-        meta: { requiresAuth: true } // Edição de usuário requer autenticação
+        props: true,
+        meta: { requiresAuth: true }
     },
-    // --- NOVA ROTA AQUI ---
     {
         path: '/cardapio/categorias',
         name: 'categoria-list',
         component: CategoriaListView,
-        meta: { requiresAuth: true } // Gerenciamento de categorias requer autenticação
+        meta: { requiresAuth: true }
     },
-    // --- FIM DA NOVA ROTA ---
+    // --- NOVAS ROTAS AQUI ---
+    {
+        path: '/cardapio/categorias/add',
+        name: 'add-categoria',
+        component: CategoriaForm,
+        meta: { requiresAuth: true }
+    },
+    {
+        path: '/cardapio/categorias/:categoriaId/edit',
+        name: 'edit-categoria',
+        component: CategoriaForm,
+        props: true, // Permite que o ID seja passado como prop
+        meta: { requiresAuth: true }
+    },
+    // --- FIM DAS NOVAS ROTAS ---
 ];
 
 const router = createRouter({
@@ -64,23 +78,18 @@ const router = createRouter({
     routes
 });
 
-// Guarda de navegação global
 router.beforeEach((to, from, next) => {
-    const requiresAuth = to.meta.requiresAuth; // Verifica se a rota exige autenticação
+    const requiresAuth = to.meta.requiresAuth;
     const loggedIn = localStorage.getItem('access_token');
 
     if (requiresAuth && !loggedIn) {
-        // Se a rota exige autenticação E o usuário não está logado, redireciona para login
         return next('/login');
     }
 
     if (to.path === '/login' && loggedIn) {
-        // Se o usuário já está logado e tenta ir para a página de login, redireciona para /users
-        // Vamos ajustar isso para redirecionar para a home, que é mais genérica.
-        return next('/'); // Redireciona para a HomeView
+        return next('/');
     }
 
-    // Permite a navegação
     next();
 });
 

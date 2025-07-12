@@ -12,14 +12,19 @@
           <p><strong>Ativa:</strong> {{ categoria.ativa ? 'Sim' : 'Não' }}</p>
           <p><strong>Ordem:</strong> {{ categoria.ordem }}</p>
           <p><strong>Estabelecimento:</strong> {{ categoria.estabelecimento }}</p>
-          </li>
+          <div class="item-actions">
+            <button @click="editCategoria(categoria.id)" class="btn-edit">Editar</button>
+            <button @click="confirmDelete(categoria.id)" class="btn-delete">Excluir</button>
+          </div>
+        </li>
       </ul>
     </div>
     <p v-else>Nenhuma categoria encontrada para o seu estabelecimento.</p>
 
     <div class="action-buttons">
       <router-link to="/" class="btn-back">Voltar para Home</router-link>
-      </div>
+      <button @click="addCategoria" class="btn-add">Adicionar Nova Categoria</button>
+    </div>
   </div>
 </template>
 
@@ -44,9 +49,7 @@ export default {
       this.error = null;
       try {
         const response = await api.get('/cardapio/categorias/');
-        // --- MUDANÇA AQUI: ACESSAR response.data.results ---
         this.categorias = response.data.results; 
-        // --- FIM DA MUDANÇA ---
       } catch (err) {
         console.error('Erro ao buscar categorias:', err);
         this.error = 'Falha ao carregar categorias. Por favor, tente novamente.';
@@ -57,6 +60,27 @@ export default {
         this.loading = false;
       }
     },
+    // NOVO MÉTODO PARA ADICIONAR CATEGORIA
+    addCategoria() {
+      this.$router.push({ name: 'add-categoria' }); // Redireciona para a rota de adicionar
+    },
+    // MÉTODO PARA EDITAR CATEGORIA (futuro)
+    editCategoria(id) {
+      this.$router.push({ name: 'edit-categoria', params: { categoriaId: id } }); // Redireciona para a rota de editar
+    },
+    // MÉTODO PARA CONFIRMAR EXCLUSÃO (futuro)
+    async confirmDelete(id) {
+      if (confirm('Tem certeza que deseja excluir esta categoria?')) {
+        try {
+          await api.delete(`/cardapio/categorias/${id}/`);
+          this.categorias = this.categorias.filter(cat => cat.id !== id);
+          alert('Categoria excluída com sucesso!');
+        } catch (err) {
+          console.error('Erro ao excluir categoria:', err);
+          alert('Erro ao excluir categoria: ' + (err.response?.data?.detail || ''));
+        }
+      }
+    }
   },
 };
 </script>
@@ -92,6 +116,7 @@ h1 {
   margin-bottom: 15px;
   text-align: left;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  position: relative; /* Para posicionar os botões de ação */
 }
 
 .categoria-item:hover {
@@ -149,5 +174,40 @@ h1 {
 
 .btn-add:hover {
   background-color: #0056b3;
+}
+
+/* Estilos para os botões de ação (editar/excluir) */
+.item-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end; /* Alinha os botões à direita */
+}
+
+.btn-edit, .btn-delete {
+  padding: 8px 15px;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.btn-edit {
+  background-color: #ffc107; /* Amarelo */
+  color: #333;
+}
+
+.btn-edit:hover {
+  background-color: #e0a800;
+}
+
+.btn-delete {
+  background-color: #dc3545; /* Vermelho */
+  color: white;
+}
+
+.btn-delete:hover {
+  background-color: #c82333;
 }
 </style>
