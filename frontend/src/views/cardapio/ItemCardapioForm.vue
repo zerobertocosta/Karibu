@@ -1,8 +1,7 @@
 <template>
   <div class="item-form-container">
     <h1>{{ isEditing ? 'Editar Item do Cardápio' : 'Adicionar Novo Item ao Cardápio' }}</h1>
-    <form @submit.prevent="saveItem" class="item-form">
-      
+    <form @submit.prevent="saveItem" class="item-form" enctype="multipart/form-data">
       <div class="form-group">
         <label for="nome">Nome:</label>
         <input type="text" id="nome" v-model="item.nome" required class="form-control" />
@@ -11,7 +10,7 @@
       <div class="form-group">
         <label for="categoria">Categoria:</label>
         <select id="categoria" v-model="item.categoria_id" required class="form-control">
-          <option :value="null" disabled>Selecione uma categoria</option> 
+          <option :value="null" disabled>Selecione uma categoria</option>
           <option v-for="cat in categoriasDisponiveis" :key="cat.id" :value="cat.id">
             {{ cat.nome }}
           </option>
@@ -30,6 +29,19 @@
         <textarea id="descricao" v-model="item.descricao" class="form-control"></textarea>
       </div>
 
+      <div class="form-group">
+        <label for="imagem">Imagem do Item:</label>
+        <input type="file" id="imagem" @change="handleImageUpload" accept="image/*" class="form-control-file" />
+        <div v-if="item.imagem_preview" class="image-preview-container">
+          <img :src="item.imagem_preview" alt="Pré-visualização da Imagem" class="image-preview" />
+          <button type="button" @click="removeImage" class="btn-remove-image">Remover Imagem</button>
+        </div>
+        <p v-else-if="item.imagem && !item.imagem_preview">
+          Imagem atual: <a :href="item.imagem" target="_blank">{{ item.imagem.split('/').pop() }}</a>
+          <button type="button" @click="removeImage" class="btn-remove-image">Remover Imagem</button>
+        </p>
+      </div>
+
       <div class="form-group checkbox-group">
         <input type="checkbox" id="disponivel" v-model="item.disponivel" class="form-checkbox" />
         <label for="disponivel">Disponível</label>
@@ -44,6 +56,7 @@
       <p v-if="successMessage" class="success-message">{{ successMessage }}</p>
 
       <div class="form-actions">
+        <router-link to="/" class="btn-back-to-home">Voltar para Home</router-link> 
         <button type="submit" class="btn-submit">{{ isEditing ? 'Salvar Alterações' : 'Adicionar Item' }}</button>
         <button type="button" @click="cancel" class="btn-cancel">Cancelar</button>
       </div>
@@ -52,8 +65,7 @@
 </template>
 
 <script>
-import api from '@/services/api';
-
+import api from '@/services/api'; 
 export default {
   name: 'ItemCardapioForm',
   props: {
@@ -66,12 +78,14 @@ export default {
     return {
       item: {
         nome: '',
-        categoria_id: null, // Alterado para null
+        categoria_id: null,
         preco: 0.00,
         descricao: '',
         disponivel: true,
         ordem: 0,
-        imagem: null, 
+        imagem: null, // URL da imagem existente
+        imagem_file: null, // Arquivo de imagem para upload
+        imagem_preview: null, // URL para pré-visualização no frontend
       },
       categoriasDisponiveis: [],
       categoriasLoading: true,
@@ -82,10 +96,7 @@ export default {
     };
   },
   async created() {
-    // 1. Carrega as categorias PRIMEIRO
-    await this.fetchCategorias(); 
-
-    // 2. SOMENTE DEPOIS de carregar as categorias, verifica se está editando e carrega o item
+    await this.fetchCategorias();
     if (this.itemId) {
       this.isEditing = true;
       await this.fetchItem(this.itemId);
@@ -108,29 +119,16 @@ export default {
     async fetchItem(id) {
       try {
         const response = await api.get(`/cardapio/itens/${id}/`);
-        // Aqui, precisamos ter certeza que 'categoria' retorna o UUID.
-        // Se o serializer de ItemCardapio no backend estiver usando um campo relacionado para leitura,
-        // ele pode retornar um objeto aninhado { id: '...', nome: '...' } em vez do UUID direto.
-        
-        let categoriaIdFromApi = null;
-        if (response.data.categoria) {
-            // Verifica se é um objeto com 'id' (caso o serializer aninhe a categoria)
-            if (typeof response.data.categoria === 'object' && response.data.categoria.id) {
-                categoriaIdFromApi = response.data.categoria.id;
-            } else {
-                // Caso contrário, assume que já é o UUID direto
-                categoriaIdFromApi = response.data.categoria;
-            }
-        }
-
         this.item = {
           nome: response.data.nome,
-          categoria_id: categoriaIdFromApi, // Atribui o ID extraído
+          categoria_id: response.data.categoria,
           preco: parseFloat(response.data.preco),
           descricao: response.data.descricao,
           disponivel: response.data.disponivel,
           ordem: response.data.ordem,
-          imagem: response.data.imagem, 
+          imagem: response.data.imagem, // URL da imagem existente
+          imagem_file: null, // Sem arquivo selecionado inicialmente
+          imagem_preview: response.data.imagem, // Pré-visualiza a imagem existente
         };
       } catch (err) {
         console.error('Erro ao buscar item para edição:', err);
@@ -138,23 +136,59 @@ export default {
         this.successMessage = null;
       }
     },
+    handleImageUpload(event) {
+      const file = event.target.files[0];
+      if (file) {
+        this.item.imagem_file = file;
+        this.item.imagem_preview = URL.createObjectURL(file); // Cria URL para pré-visualização
+      } else {
+        this.item.imagem_file = null;
+        // Se não houver arquivo, a pré-visualização deve ser a imagem existente ou nula
+        this.item.imagem_preview = this.item.imagem;
+      }
+    },
+    removeImage() {
+      this.item.imagem = null; // Remove a URL da imagem existente
+      this.item.imagem_file = null; // Remove o arquivo selecionado
+      this.item.imagem_preview = null; // Remove a pré-visualização
+      // Opcional: Limpar o input file (útil se o usuário remover e quiser adicionar a mesma imagem novamente)
+      const fileInput = this.$el.querySelector('#imagem');
+      if (fileInput) fileInput.value = '';
+    },
     async saveItem() {
       this.error = null;
       this.successMessage = null;
       try {
-        let response;
-        const payload = { ...this.item };
-        if (payload.imagem === null || payload.imagem === '') {
-            delete payload.imagem;
+        const formData = new FormData();
+        // Adiciona campos de texto/número ao FormData
+        formData.append('nome', this.item.nome);
+        formData.append('categoria', this.item.categoria_id); // Backend espera 'categoria', não 'categoria_id'
+        formData.append('preco', this.item.preco);
+        formData.append('descricao', this.item.descricao || '');
+        formData.append('disponivel', this.item.disponivel);
+        formData.append('ordem', this.item.ordem);
+        // Adiciona a imagem ao FormData
+        if (this.item.imagem_file) {
+          formData.append('imagem', this.item.imagem_file);
+        } else if (this.item.imagem === null && this.isEditing) {
+          // Se a imagem existente foi removida e estamos editando, envie um valor vazio ou nulo
+          // Para DRF, enviar uma string vazia ou 'null' pode funcionar para limpar o campo.
+          // Teste com '' ou se der problema, 'null'
+          formData.append('imagem', '');
         }
-
+        let response;
+        // Para requisições com FormData, o Axios e o DRF funcionam melhor com PATCH/POST.
+        // O método PUT pode exigir que todos os campos sejam enviados, mesmo os não alterados.
         if (this.isEditing) {
-          response = await api.patch(`/cardapio/itens/${this.itemId}/`, payload);
+          response = await api.patch(`/cardapio/itens/${this.itemId}/`, formData);
           this.successMessage = 'Item atualizado com sucesso!';
         } else {
-          response = await api.post('/cardapio/itens/', payload);
+          response = await api.post('/cardapio/itens/', formData);
           this.successMessage = 'Item adicionado com sucesso!';
-          this.item = { nome: '', categoria_id: null, preco: 0.00, descricao: '', disponivel: true, ordem: 0, imagem: null };
+          // Limpa o formulário após adicionar um novo item
+          this.item = { nome: '', categoria_id: null, preco: 0.00, descricao: '', disponivel: true, ordem: 0, imagem: null, imagem_file: null, imagem_preview: null };
+          const fileInput = this.$el.querySelector('#imagem');
+          if (fileInput) fileInput.value = '';
         }
         console.log('Resposta da API:', response.data);
       } catch (err) {
@@ -178,7 +212,6 @@ export default {
 </script>
 
 <style scoped>
-/* Seu CSS (inalterado) */
 .item-form-container {
   padding: 30px;
   max-width: 700px;
@@ -221,6 +254,17 @@ h1 {
   box-sizing: border-box;
 }
 
+.form-control-file {
+  /* Novo estilo para input file */
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+  background-color: #fff;
+  cursor: pointer;
+}
+
 textarea.form-control {
   resize: vertical;
   min-height: 80px;
@@ -235,6 +279,37 @@ textarea.form-control {
 .form-checkbox {
   width: auto;
   margin-right: 5px;
+}
+
+/* Estilos para pré-visualização da imagem */
+.image-preview-container {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.image-preview {
+  max-width: 200px;
+  max-height: 200px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  object-fit: cover;
+}
+
+.btn-remove-image {
+  background-color: #ff4d4f;
+  color: white;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.btn-remove-image:hover {
+  background-color: #fa3c3f;
 }
 
 .error-message {
@@ -256,7 +331,8 @@ textarea.form-control {
   gap: 15px;
 }
 
-.btn-submit, .btn-cancel {
+.btn-submit,
+.btn-cancel {
   padding: 12px 25px;
   border: none;
   border-radius: 5px;
@@ -283,6 +359,25 @@ textarea.form-control {
 
 .btn-cancel:hover {
   background-color: #5a6268;
+  transform: translateY(-2px);
+}
+
+/* NOVO ESTILO PARA O BOTÃO VOLTAR PARA HOME */
+.btn-back-to-home {
+  background-color: #007bff; /* Azul */
+  color: white;
+  padding: 12px 25px;
+  border: none;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+  text-decoration: none; /* Para o router-link se comportar como botão */
+  display: inline-block; /* Garante que se comporte como botão para espaçamento */
+}
+
+.btn-back-to-home:hover {
+  background-color: #0056b3;
   transform: translateY(-2px);
 }
 </style>

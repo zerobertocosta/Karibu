@@ -3,18 +3,20 @@
     <h1>Itens do Cardápio</h1>
     <p v-if="loading">Carregando itens...</p>
     <p v-else-if="error" class="error-message">{{ error }}</p>
-    
     <div v-else-if="itens.length > 0">
       <ul class="item-list">
-        <li v-for="item in itens" :key="item.id" class="item-card">
+        <li v-for="item in itens" :key="item.id" class="item-card" :class="{ 'item-unavailable': !item.disponivel }">
           <div class="item-details">
             <h3>{{ item.nome }}</h3>
             <p><strong>Categoria:</strong> {{ item.categoria_nome || 'N/A' }}</p>
             <p><strong>Preço:</strong> R$ {{ parseFloat(item.preco).toFixed(2) }}</p>
             <p><strong>Descrição:</strong> {{ item.descricao || 'N/A' }}</p>
+            
+            <p v-if="!item.disponivel" class="unavailable-tag">❌ Indisponível</p>
             <p><strong>Disponível:</strong> {{ item.disponivel ? 'Sim' : 'Não' }}</p>
             <p><strong>Ordem:</strong> {{ item.ordem }}</p>
-            <p><strong>Estabelecimento:</strong> {{ item.estabelecimento_nome || 'N/A' }}</p> <div v-if="item.imagem" class="item-image-container">
+            <p><strong>Estabelecimento:</strong> {{ item.estabelecimento_nome || 'N/A' }}</p>
+            <div v-if="item.imagem" class="item-image-container">
               <img :src="item.imagem" :alt="item.nome" class="item-image" />
             </div>
             <div v-else class="item-no-image-placeholder">
@@ -29,7 +31,6 @@
       </ul>
     </div>
     <p v-else>Nenhum item encontrado para o seu estabelecimento.</p>
-
     <div class="action-buttons">
       <router-link to="/" class="btn-back">Voltar para Home</router-link>
       <button @click="addItem" class="btn-add">Adicionar Novo Item</button>
@@ -38,8 +39,7 @@
 </template>
 
 <script>
-import api from '@/services/api'; 
-
+import api from '@/services/api';
 export default {
   name: 'ItemCardapioListView',
   data() {
@@ -58,12 +58,12 @@ export default {
       this.error = null;
       try {
         const response = await api.get('/cardapio/itens/');
-        this.itens = response.data.results; 
+        this.itens = response.data.results;
       } catch (err) {
         console.error('Erro ao buscar itens:', err);
         this.error = 'Falha ao carregar itens do cardápio. Por favor, tente novamente.';
         if (err.response && err.response.data && err.response.data.detail) {
-            this.error = err.response.data.detail;
+          this.error = err.response.data.detail;
         }
       } finally {
         this.loading = false;
@@ -127,6 +127,26 @@ h1 {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative; /* Para posicionar a tag de indisponível */
+  overflow: hidden; /* Garante que a borda dupla fique dentro do card */
+}
+
+.item-card.item-unavailable {
+  border: 2px solid #dc3545; /* Borda vermelha */
+  opacity: 0.7; /* Suavemente mais opaco */
+}
+
+/* Estilo para a tag "Indisponível" */
+.unavailable-tag {
+  background-color: #dc3545; /* Cor de fundo vermelha */
+  color: white; /* Texto branco */
+  font-weight: bold;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 0.9em;
+  text-align: center;
+  margin: 10px 0; /* Espaçamento da tag */
+  display: inline-block; /* Para ocupar apenas o espaço necessário */
 }
 
 .item-card:hover {
@@ -158,8 +178,8 @@ h1 {
 
 .item-image {
   max-width: 100%;
-  height: 150px; 
-  object-fit: cover; 
+  height: 150px;
+  object-fit: cover;
   border-radius: 5px;
   border: 1px solid #eee;
 }
@@ -177,11 +197,11 @@ h1 {
   font-size: 1.2em;
   flex-direction: column;
 }
-.item-no-image-placeholder i {
-    font-size: 2em;
-    margin-bottom: 5px;
-}
 
+.item-no-image-placeholder i {
+  font-size: 2em;
+  margin-bottom: 5px;
+}
 
 .item-actions {
   margin-top: 20px;
@@ -190,7 +210,8 @@ h1 {
   justify-content: flex-end;
 }
 
-.btn-edit, .btn-delete {
+.btn-edit,
+.btn-delete {
   padding: 8px 15px;
   border-radius: 5px;
   font-weight: bold;
