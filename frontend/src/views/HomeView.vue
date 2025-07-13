@@ -2,10 +2,8 @@
   <div class="home">
     <h1>Bem-vindo ao Karibu!</h1>
     <p>Seu sistema de gestão para restaurantes.</p>
-
     <div v-if="isLoggedIn" class="logged-in-content">
       <p>Você está logado como: **{{ username }}**.</p>
-      
       <div class="quick-actions">
         <h2>O que você gostaria de fazer?</h2>
         <ul>
@@ -20,6 +18,11 @@
             </router-link>
           </li>
           <li>
+            <router-link to="/mesas" class="action-link">
+              Gerenciar Mesas
+            </router-link>
+          </li>
+          <li>
             <router-link to="/users" class="action-link">
               Gestão de Usuários
             </router-link>
@@ -27,7 +30,6 @@
         </ul>
       </div>
     </div>
-
     <div v-else class="not-logged-in-content">
       <p>Faça login para acessar os recursos do sistema.</p>
       <router-link to="/login" class="login-button">Fazer Login</router-link>
@@ -46,19 +48,14 @@ export default {
   },
   created() {
     this.checkLoginStatus();
-    // Adiciona um listener para mudanças no localStorage, útil se o login/logout
-    // acontecer em outra aba ou componente e você quiser atualizar esta visão.
     window.addEventListener('storage', this.checkLoginStatus);
   },
   beforeUnmount() {
-    // Remove o listener para evitar vazamento de memória quando o componente é destruído.
     window.removeEventListener('storage', this.checkLoginStatus);
   },
   methods: {
     checkLoginStatus() {
-      // Verifica se o token de acesso existe no localStorage
       this.isLoggedIn = !!localStorage.getItem('access_token');
-      // Obtém o nome de usuário (se existir)
       this.username = localStorage.getItem('username') || '';
     }
   }
@@ -75,22 +72,18 @@ export default {
   max-width: 900px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
-
 h1 {
   color: #333;
   margin-bottom: 20px;
 }
-
 p {
   color: #555;
   font-size: 1.1em;
   margin-bottom: 10px;
 }
-
 .logged-in-content {
   margin-top: 30px;
 }
-
 .quick-actions {
   margin-top: 40px;
   background-color: #fff;
@@ -98,13 +91,11 @@ p {
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
-
 .quick-actions h2 {
   color: #007bff; /* Azul para o título da seção */
   margin-bottom: 25px;
   font-size: 1.6em;
 }
-
 .quick-actions ul {
   list-style: none;
   padding: 0;
@@ -113,11 +104,9 @@ p {
   justify-content: center;
   gap: 20px; /* Espaçamento entre os links */
 }
-
 .quick-actions li {
   margin-bottom: 10px; /* Espaçamento entre os itens da lista, se eles quebrarem a linha */
 }
-
 .action-link {
   display: block; /* Ocupa a largura total do li */
   background-color: #28a745; /* Verde vibrante */
@@ -131,16 +120,13 @@ p {
   min-width: 250px; /* Garante que os botões tenham um tamanho mínimo */
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
 }
-
 .action-link:hover {
   background-color: #218838; /* Verde mais escuro no hover */
   transform: translateY(-2px); /* Efeito sutil de elevação */
 }
-
 .not-logged-in-content {
   margin-top: 30px;
 }
-
 .login-button {
   background-color: #007bff; /* Azul padrão para botão de login */
   color: white;
@@ -151,7 +137,6 @@ p {
   font-size: 1.1em;
   transition: background-color 0.3s ease;
 }
-
 .login-button:hover {
   background-color: #0056b3; /* Azul mais escuro no hover */
 }
