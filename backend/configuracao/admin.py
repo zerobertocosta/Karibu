@@ -1,7 +1,8 @@
 # backend/configuracao/admin.py
 
 from django.contrib import admin
-from .models import Estabelecimento
+from .models import Estabelecimento, AssinaturaEstabelecimento 
+
 
 @admin.register(Estabelecimento)
 class EstabelecimentoAdmin(admin.ModelAdmin):
@@ -22,5 +23,31 @@ class EstabelecimentoAdmin(admin.ModelAdmin):
         }),
         ('Metadados', {
             'fields': ('id', 'data_criacao', 'data_atualizacao')
+        }),
+    )
+
+# NOVO REGISTRO: AssinaturaEstabelecimentoAdmin
+@admin.register(AssinaturaEstabelecimento)
+class AssinaturaEstabelecimentoAdmin(admin.ModelAdmin):
+    list_display = (
+        'estabelecimento', 'vendedor', 'data_ativacao', 'data_desativacao',
+        'estado', 'valor_mensal', 'forma_pagamento', 'data_registro'
+    )
+    list_filter = (
+        'estado', 'forma_pagamento', 'vendedor', 'data_ativacao', 'data_desativacao'
+    )
+    search_fields = (
+        'estabelecimento__nome', 'vendedor__username', 'observacoes'
+    )
+    date_hierarchy = 'data_ativacao'
+    fieldsets = (
+        (None, {
+            'fields': ('estabelecimento', 'vendedor', 'estado', 'observacoes')
+        }),
+        ('Período da Assinatura', {
+            'fields': ('data_ativacao', 'data_desativacao')
+        }),
+        ('Valores e Pagamento', {
+            'fields': ('valor_ativacao', 'valor_mensal', 'forma_pagamento')
         }),
     )
