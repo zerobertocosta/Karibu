@@ -1,8 +1,9 @@
 <template>
   <div class="mesa-list-container">
-    <h1>Mesas do Estabelecimento</h1>
+    <h1>Gestão de Mesas</h1>
     <p v-if="loading">Carregando mesas...</p>
     <p v-else-if="error" class="error-message">{{ error }}</p>
+
     <div v-else-if="mesas.length > 0">
       <ul class="mesa-list">
         <li v-for="mesa in mesas" :key="mesa.id" class="mesa-card">
@@ -14,16 +15,17 @@
             <p><strong>Estabelecimento:</strong> {{ mesa.estabelecimento.nome || 'N/A' }}</p>
           </div>
           <div class="mesa-actions">
-            <button @click="editMesa(mesa.id)" class="btn-edit">Editar</button>
-            <button @click="confirmDeleteMesa(mesa.id)" class="btn-delete">Excluir</button>
+            <button v-if="canManageMesas" @click="editMesa(mesa.id)" class="btn-edit">Editar</button>
+            <button v-if="canManageMesas" @click="confirmDeleteMesa(mesa.id)" class="btn-delete">Excluir</button>
           </div>
         </li>
       </ul>
     </div>
-    <p v-else>Nenhuma mesa encontrada para o seu estabelecimento.</p>
+    <p v-else>Nenhuma mesa encontrada para o seu estabelecimento ou você não tem permissão para visualizar.</p>
+
     <div class="action-buttons">
       <router-link to="/" class="btn-back">Voltar para Home</router-link>
-      <button @click="addMesa" class="btn-add">Adicionar Nova Mesa</button>
+      <button v-if="canManageMesas" @click="addMesa" class="btn-add">Adicionar Nova Mesa</button>
     </div>
   </div>
 </template>
@@ -38,9 +40,30 @@ export default {
       mesas: [],
       loading: true,
       error: null,
+      loggedInUserRole: '',      // Para armazenar o papel do usuário
+      isLoggedInUserSuperuser: false, // Para armazenar se é superusuário
     };
   },
+  computed: {
+    // Computa se o usuário logado tem permissão para gerenciar mesas (adicionar/editar/excluir)
+    canManageMesas() {
+      return this.isLoggedInUserSuperuser || this.loggedInUserRole === 'gestor';
+    }
+  },
   async created() {
+    // Primeiro, carregamos o papel do usuário do localStorage
+    this.loggedInUserRole = localStorage.getItem('user_role') || '';
+    // E também o status de superusuário, se você tiver salvo (pode precisar de uma chamada '/me/' como em UserManagementView)
+    // Para simplificar aqui, vamos assumir que 'admin' no papel significa superusuário,
+    // ou que você tem uma forma de salvar 'is_superuser' no localStorage.
+    // O ideal seria pegar isso do endpoint /api/usuarios/users/?username=... como feito em UserManagementView.vue
+    this.isLoggedInUserSuperuser = this.loggedInUserRole === 'admin'; 
+
+    // Se o 'admin' no papel não for o suficiente para 'is_superuser'
+    // Você pode adaptar a lógica de fetchLoggedInUserContext do UserManagementView.vue aqui
+    // ou garantir que 'is_superuser' seja salvo no localStorage no login.
+    // POR ENQUANTO, VAMOS ASSUMIR QUE 'admin' É O BASTANTE PARA SUPERUSER NO FRONTEND
+
     await this.fetchMesas();
   },
   methods: {
@@ -55,6 +78,9 @@ export default {
         this.error = 'Falha ao carregar mesas. Por favor, tente novamente.';
         if (err.response && err.response.data && err.response.data.detail) {
           this.error = err.response.data.detail;
+          if (err.response.status === 401) { // Não autenticado
+              this.$router.push('/login');
+          }
         }
       } finally {
         this.loading = false;
@@ -62,16 +88,11 @@ export default {
     },
     getStatusClass(status) {
       switch (status) {
-        case 'LIVRE':
-          return 'status-livre';
-        case 'OCUPADA':
-          return 'status-ocupada';
-        case 'RESERVADA':
-          return 'status-reservada';
-        case 'MANUTENCAO':
-          return 'status-manutencao';
-        default:
-          return '';
+        case 'LIVRE': return 'status-livre';
+        case 'OCUPADA': return 'status-ocupada';
+        case 'RESERVADA': return 'status-reservada';
+        case 'MANUTENCAO': return 'status-manutencao';
+        default: return '';
       }
     },
     getStatusDisplay(status) {
@@ -97,7 +118,7 @@ export default {
           alert('Mesa excluída com sucesso!');
         } catch (err) {
           console.error('Erro ao excluir mesa:', err);
-          alert('Erro ao excluir mesa: ' + (err.response?.data?.detail || ''));
+          alert('Erro ao excluir mesa: ' + (err.response?.data?.detail || 'Você não tem permissão para esta ação.'));
         }
       }
     }
@@ -106,6 +127,7 @@ export default {
 </script>
 
 <style scoped>
+/* O estilo permanece o mesmo */
 .mesa-list-container {
   padding: 30px;
   max-width: 900px;
@@ -115,13 +137,11 @@ export default {
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   text-align: center;
 }
-
 h1 {
   color: #333;
   margin-bottom: 25px;
   font-size: 2.2em;
 }
-
 .mesa-list {
   list-style: none;
   padding: 0;
@@ -130,7 +150,6 @@ h1 {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 20px;
 }
-
 .mesa-card {
   background-color: #ffffff;
   border: 1px solid #e0e0e0;
@@ -142,58 +161,53 @@ h1 {
   flex-direction: column;
   justify-content: space-between;
 }
-
 .mesa-card:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
 }
-
 .mesa-details h3 {
   color: #333;
   margin-top: 0;
   margin-bottom: 10px;
   font-size: 1.5em;
 }
-
 .mesa-details p {
   margin: 5px 0;
   color: #555;
   font-size: 0.95em;
 }
-
 .mesa-details strong {
   color: #333;
 }
-
 /* Estilos para os status */
 .status-livre {
-  color: #28a745; /* Verde */
+  color: #28a745;
+  /* Verde */
   font-weight: bold;
 }
-
 .status-ocupada {
-  color: #dc3545; /* Vermelho */
+  color: #dc3545;
+  /* Vermelho */
   font-weight: bold;
 }
-
 .status-reservada {
-  color: #ffc107; /* Amarelo/Laranja */
+  color: #ffc107;
+  /* Amarelo/Laranja */
   font-weight: bold;
 }
-
 .status-manutencao {
-  color: #6c757d; /* Cinza */
+  color: #6c757d;
+  /* Cinza */
   font-weight: bold;
 }
-
 .mesa-actions {
   margin-top: 20px;
   display: flex;
   gap: 10px;
   justify-content: flex-end;
 }
-
-.btn-edit, .btn-delete {
+.btn-edit,
+.btn-delete {
   padding: 8px 15px;
   border-radius: 5px;
   font-weight: bold;
@@ -201,38 +215,31 @@ h1 {
   border: none;
   transition: background-color 0.3s ease;
 }
-
 .btn-edit {
   background-color: #ffc107;
   color: #333;
 }
-
 .btn-edit:hover {
   background-color: #e0a800;
 }
-
 .btn-delete {
   background-color: #dc3545;
   color: white;
 }
-
 .btn-delete:hover {
   background-color: #c82333;
 }
-
 .error-message {
   color: #dc3545;
   font-weight: bold;
   margin-top: 20px;
 }
-
 .action-buttons {
   margin-top: 30px;
   display: flex;
   justify-content: center;
   gap: 15px;
 }
-
 .btn-back {
   background-color: #6c757d;
   color: white;
@@ -242,11 +249,9 @@ h1 {
   font-weight: bold;
   transition: background-color 0.3s ease;
 }
-
 .btn-back:hover {
   background-color: #5a6268;
 }
-
 .btn-add {
   background-color: #007bff;
   color: white;
@@ -257,11 +262,9 @@ h1 {
   cursor: pointer;
   transition: background-color 0.3s ease;
 }
-
 .btn-add:hover {
   background-color: #0056b3;
 }
-
 @media (max-width: 768px) {
   .mesa-list {
     grid-template-columns: 1fr;

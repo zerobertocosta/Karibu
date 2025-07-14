@@ -48,6 +48,22 @@ export default {
         // Exemplo: localStorage.setItem('user_role', response.data.user.perfil.papel);
         // Ou se o backend já retornar no payload do token
 
+
+        // >>> Adicione estas linhas <<<
+        // Certifique-se de que 'response.data.user.perfil.papel' e '.estabelecimento.id'
+        // realmente venham na resposta do seu backend no endpoint /token/ ou em um /me/
+        if (response.data.user && response.data.user.perfil) {
+          localStorage.setItem('user_role', response.data.user.perfil.papel);
+        if (response.data.user.perfil.estabelecimento) {
+          localStorage.setItem('establishment_id', response.data.user.perfil.estabelecimento.id);
+        }
+        // O is_superuser pode vir diretamente no objeto user, se você o personalizar no backend
+        if (typeof response.data.user.is_superuser !== 'undefined') {
+          localStorage.setItem('is_superuser', response.data.user.is_superuser.toString());
+        }
+      }
+        // >>> Fim da adição <<<
+
         // >>> CORREÇÃO AQUI: REDIRECIONAR PARA A HOMEPAGE APÓS LOGIN <<<
         this.$router.push('/'); // Redireciona para a HomeView
       } catch (err) {
