@@ -1,6 +1,9 @@
 # backend/cliente/admin.py
 from django.contrib import admin
 from .models import Cliente # Importa o modelo Cliente
+from django.contrib.auth import get_user_model # Para acessar o modelo de usuário
+
+User = get_user_model() # Obtém o modelo de usuário atual
 
 @admin.register(Cliente)
 class ClienteAdmin(admin.ModelAdmin):
@@ -9,49 +12,64 @@ class ClienteAdmin(admin.ModelAdmin):
     """
     # Define quais campos serão exibidos na lista de clientes no admin
     list_display = (
-        'celular', # Adicionado: O novo PK e identificador principal
+        'celular', # O novo PK e identificador principal (se for unique)
         'nome_completo',
-        'get_estabelecimento_nome',
+        'get_estabelecimento_nome', # Método auxiliar para exibir o nome do estabelecimento
         'data_cadastro',
-        'data_atualizacao' # Adicionado para visibilidade
+        'data_atualizacao'
     )
 
     # Define campos pelos quais se pode pesquisar clientes
     search_fields = (
-        'celular', # Adicionado
+        'celular',
         'nome_completo',
-        'logradouro', # Adicionado para pesquisa de endereço
-        'bairro',     # Adicionado para pesquisa de endereço
-        'cidade',     # Adicionado para pesquisa de endereço
-        'cep'         # Adicionado para pesquisa de endereço
+        'logradouro',
+        'bairro',
+        'cidade',
+        'cep'
     )
 
     # Define campos que podem ser usados para filtrar a lista de clientes
     list_filter = (
         'estabelecimento',
         'data_cadastro',
-        'cidade', # Adicionado para filtro por cidade
-        'estado'  # Adicionado para filtro por estado
+        'cidade',
+        'estado'
     )
 
-    # Define campos que podem ser editados diretamente na lista (cuidado com isso em produção)
-    # Recomendo ser cautelosa com list_editable, especialmente para senhas e campos críticos.
-    # Por segurança, retirei 'password' daqui. 'celular' é a PK, então também não pode ser editado.
-    list_editable = (
-        # 'nome_completo', # Exemplo: Se quiser editar nome_completo direto na lista
-    )
+    # Não incluiremos list_editable aqui para evitar edição direta de campos sensíveis
+    # e porque 'celular' é chave primária (não editável em list_editable)
 
     # Agrupamento de campos no formulário de detalhes do cliente para melhor organização
     fieldsets = (
         (None, {
-            'fields': ('celular', 'password', 'nome_completo', 'estabelecimento', 'foto_cliente', 'data_nascimento')
+            # REMOVIDOS: 'password' (não existe mais no modelo Cliente)
+            #           'complemento' (não existe no modelo Cliente)
+            'fields': (
+                'celular',
+                'nome_completo',
+                'estabelecimento',
+                'foto_cliente',
+                'data_nascimento'
+            )
         }),
         ('Endereço', {
-            'fields': ('logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep'),
+            # REMOVIDO: 'complemento' (não existe no modelo Cliente)
+            'fields': (
+                'logradouro',
+                'numero',
+                'bairro',
+                'cidade',
+                'estado',
+                'cep'
+            ),
             'classes': ('collapse',), # Opcional: faz o fieldset ser colapsável por padrão
         }),
         ('Datas', {
-            'fields': ('data_cadastro', 'data_atualizacao'),
+            'fields': (
+                'data_cadastro',
+                'data_atualizacao'
+            ),
             'classes': ('collapse',),
         }),
     )
@@ -69,16 +87,13 @@ class ClienteAdmin(admin.ModelAdmin):
     # MÉTODO AUXILIAR PARA list_display
     # =========================================================================
     def get_estabelecimento_nome(self, obj):
-        """
-        Retorna o nome do estabelecimento para exibição na list_display.
-        """
+        """ Retorna o nome do estabelecimento para exibição na list_display. """
         return obj.estabelecimento.nome if obj.estabelecimento else 'N/A'
     get_estabelecimento_nome.short_description = 'Estabelecimento Associado' # Título da coluna no admin
 
     # =========================================================================
     # Lógica de Multi-Tenant e Permissões (já estava no seu código, mantida e ajustada)
     # =========================================================================
-
     # Sobrescreve o queryset para filtrar por estabelecimento do usuário logado
     # (Usuários não superusuários verão apenas os clientes de seu próprio estabelecimento)
     def get_queryset(self, request):
@@ -102,11 +117,11 @@ class ClienteAdmin(admin.ModelAdmin):
             if 'estabelecimento' in form.base_fields:
                 form.base_fields['estabelecimento'].queryset = \
                     form.base_fields['estabelecimento'].queryset.filter(id=user_estabelecimento.id)
-                
+
                 # Preenche o valor inicial se for um novo objeto e o campo não tiver valor
-                if not obj:
+                if not obj: # Para criação de novo objeto
                     form.base_fields['estabelecimento'].initial = user_estabelecimento.id
-                
+
                 # Desabilita botões de adicionar/alterar/deletar relacionamento para o campo estabelecimento
                 form.base_fields['estabelecimento'].widget.can_add_related = False
                 form.base_fields['estabelecimento'].widget.can_change_related = False

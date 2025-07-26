@@ -1,73 +1,54 @@
 # backend/cliente/views.py
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from .models import Cliente
 from .serializers import ClienteSerializer
-from .permissions import IsOwnerOrManager # Importa a permissão customizada
+from .permissions import IsOwnerOrManager
+from rest_framework.permissions import IsAuthenticated
+from django.db import transaction # Import para garantir atomicidade
+from django.contrib.auth import get_user_model # Importa o modelo de usuário ativo
+
+User = get_user_model() # Obtém o modelo de usuário customizado ou padrão
 
 class ClienteViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet para gerenciar clientes.
-    Permite operações CRUD (Criar, Ler, Atualizar, Deletar) para o modelo Cliente.
-    """
     queryset = Cliente.objects.all()
     serializer_class = ClienteSerializer
-    permission_classes = [IsAuthenticated, IsOwnerOrManager] # Aplica autenticação e permissão customizada
+    permission_classes = [IsAuthenticated, IsOwnerOrManager]
+    lookup_field = 'celular' # Define o celular como campo de lookup
 
     def get_queryset(self):
-        """
-        Garante que usuários não superusuários ou gestores vejam apenas
-        os clientes de seu próprio estabelecimento, ou seu próprio perfil.
-        Superusuários e gestores veem todos ou os do seu estabelecimento.
-        """
+        # Filtrar clientes com base na permissão IsOwnerOrManager
         user = self.request.user
-        
-        # Superusuários veem todos os clientes
-        if user.is_superuser:
-            return Cliente.objects.all()
-        
-        # Gestores veem os clientes do seu estabelecimento
-        if hasattr(user, 'perfil') and user.perfil.is_gestor:
-            if user.perfil.estabelecimento:
+        if user.is_authenticated:
+            # Verifica se o usuário tem um perfil e se é gestor
+            if hasattr(user, 'perfil') and user.perfil.is_gestor:
+                # Gestor vê clientes do seu estabelecimento
                 return Cliente.objects.filter(estabelecimento=user.perfil.estabelecimento)
-            return Cliente.objects.none() # Se for gestor mas não tiver estabelecimento, não vê nada
-        
-        # Clientes normais só podem ver seu próprio perfil
-        # A permissão 'IsOwnerOrManager' já lida com a visibilidade de objeto.
-        # Aqui, estamos filtrando a lista inicial.
-        # Assumindo que o 'username' do cliente é o 'celular'
-        return Cliente.objects.filter(celular=user.username)
+            else:
+                # Cliente normal só vê o próprio perfil
+                return Cliente.objects.filter(celular=user.username)
+        return Cliente.objects.none() # Não autenticado não vê nada
 
+    # NOVO MÉTODO OU MÉTODO ATUALIZADO PARA LIDAR COM A EXCLUSÃO
+    def perform_destroy(self, instance):
+        """
+        Sobrescreve perform_destroy para deletar o Cliente e o User associado.
+        """
+        user_celular = instance.celular # Pega o celular do cliente antes de deletá-lo
 
-    def perform_create(self, serializer):
-        """
-        Define o estabelecimento para o cliente na criação, se o usuário não for superusuário
-        e tiver um estabelecimento associado.
-        """
-        user = self.request.user
-        if not user.is_superuser and hasattr(user, 'perfil') and user.perfil.estabelecimento:
-            # Garante que o cliente seja associado ao estabelecimento do usuário logado
-            serializer.save(estabelecimento=user.perfil.estabelecimento)
-        else:
-            # Para superusuários, ou se o estabelecimento for passado explicitamente (e permitido por validação)
-            serializer.save()
-
-    def get_object(self):
-        """
-        Garante que um cliente normal só possa acessar seu próprio perfil pelo celular (PK).
-        Gestores/Superusuários acessam normalmente.
-        """
-        obj = super().get_object()
-        # Se o usuário não for superusuário nem gestor, e o celular do objeto não for o do usuário,
-        # levantar um erro de permissão.
-        # A permissão IsOwnerOrManager já faz grande parte disso, mas é bom ter uma redundância aqui
-        # para a obtenção do objeto.
-        user = self.request.user
-        if not user.is_superuser and not (hasattr(user, 'perfil') and user.perfil.is_gestor):
-            if str(obj.celular) != str(user.username): # Converte para string para comparação segura
-                self.permission_denied(
-                    self.request,
-                    message="Você não tem permissão para acessar o perfil de outros clientes."
-                )
-        return obj
+        with transaction.atomic():
+            # 1. Deleta o Cliente
+            instance.delete()
+            
+            # 2. Tenta deletar o User associado (que tem o celular como username)
+            try:
+                user_to_delete = User.objects.get(username=user_celular)
+                user_to_delete.delete()
+                # O Perfil será deletado em cascata se o OneToOneField em Perfil tiver on_delete=CASCADE
+                # Se não tiver, precisaria deletar Perfil.objects.filter(user=user_to_delete).delete()
+            except User.DoesNotExist:
+                # Logar um aviso se o User não for encontrado, mas não impedir a deleção do Cliente
+                print(f"Aviso: Usuário associado para o celular {user_celular} não encontrado ao deletar Cliente.")
+            except Exception as e:
+                # Logar qualquer outro erro inesperado
+                print(f"Erro ao deletar usuário associado {user_celular}: {e}")
