@@ -1,5 +1,4 @@
 # backend/cliente/admin.py
-
 from django.contrib import admin
 from .models import Cliente # Importa o modelo Cliente
 
@@ -9,42 +8,66 @@ class ClienteAdmin(admin.ModelAdmin):
     Configuração do painel de administração para o modelo Cliente.
     """
     # Define quais campos serão exibidos na lista de clientes no admin
-    # Removido 'ativo' pois não existe no modelo Cliente
-    list_display = ('nome_completo', 'email', 'telefone', 'cpf', 'get_estabelecimento_nome', 'data_cadastro')
+    list_display = (
+        'celular', # Adicionado: O novo PK e identificador principal
+        'nome_completo',
+        'get_estabelecimento_nome',
+        'data_cadastro',
+        'data_atualizacao' # Adicionado para visibilidade
+    )
 
     # Define campos pelos quais se pode pesquisar clientes
-    search_fields = ('nome_completo', 'email', 'telefone', 'cpf')
+    search_fields = (
+        'celular', # Adicionado
+        'nome_completo',
+        'logradouro', # Adicionado para pesquisa de endereço
+        'bairro',     # Adicionado para pesquisa de endereço
+        'cidade',     # Adicionado para pesquisa de endereço
+        'cep'         # Adicionado para pesquisa de endereço
+    )
 
     # Define campos que podem ser usados para filtrar a lista de clientes
-    # Removido 'ativo' pois não existe no modelo Cliente
-    list_filter = ('estabelecimento', 'data_cadastro')
+    list_filter = (
+        'estabelecimento',
+        'data_cadastro',
+        'cidade', # Adicionado para filtro por cidade
+        'estado'  # Adicionado para filtro por estado
+    )
 
     # Define campos que podem ser editados diretamente na lista (cuidado com isso em produção)
-    # Removido 'ativo' pois não existe no modelo Cliente
-    list_editable = ('email', 'telefone')
+    # Recomendo ser cautelosa com list_editable, especialmente para senhas e campos críticos.
+    # Por segurança, retirei 'password' daqui. 'celular' é a PK, então também não pode ser editado.
+    list_editable = (
+        # 'nome_completo', # Exemplo: Se quiser editar nome_completo direto na lista
+    )
 
-    # =========================================================================
-    # SOLUÇÃO PARA EXIBIR O NOME DO ESTABELECIMENTO NO FORMULÁRIO E PESQUISA
-    # =========================================================================
+    # Agrupamento de campos no formulário de detalhes do cliente para melhor organização
+    fieldsets = (
+        (None, {
+            'fields': ('celular', 'password', 'nome_completo', 'estabelecimento', 'foto_cliente', 'data_nascimento')
+        }),
+        ('Endereço', {
+            'fields': ('logradouro', 'numero', 'complemento', 'bairro', 'cidade', 'estado', 'cep'),
+            'classes': ('collapse',), # Opcional: faz o fieldset ser colapsável por padrão
+        }),
+        ('Datas', {
+            'fields': ('data_cadastro', 'data_atualizacao'),
+            'classes': ('collapse',),
+        }),
+    )
+
     # Usa autocomplete_fields para o campo 'estabelecimento'.
     # Isso transformará o campo de seleção em um campo de texto com autocompletar
     # que exibe o nome do estabelecimento (do __str__ do modelo Estabelecimento)
     # e permite pesquisa. Requer 'search_fields' configurado no EstabelecimentoAdmin.
     autocomplete_fields = ['estabelecimento']
 
-    # Se você tinha raw_id_fields descomentado antes, certifique-se de que esteja comentado ou removido:
-    # raw_id_fields = ('estabelecimento',)
-    # =========================================================================
-
     # Define campos que serão somente leitura no formulário de edição/criação
-    # Adicionado 'data_atualizacao' se ele existe no seu modelo Cliente e você quer que seja readonly.
     readonly_fields = ('data_cadastro', 'data_atualizacao')
 
     # =========================================================================
-    # MÉTODO AUXILIAR PARA list_display (INDENTAÇÃO CORRIGIDA)
+    # MÉTODO AUXILIAR PARA list_display
     # =========================================================================
-    # Este método DEVE estar dentro da classe ClienteAdmin e com a mesma indentação
-    # das variáveis de classe acima (list_display, search_fields, etc.).
     def get_estabelecimento_nome(self, obj):
         """
         Retorna o nome do estabelecimento para exibição na list_display.
@@ -52,9 +75,8 @@ class ClienteAdmin(admin.ModelAdmin):
         return obj.estabelecimento.nome if obj.estabelecimento else 'N/A'
     get_estabelecimento_nome.short_description = 'Estabelecimento Associado' # Título da coluna no admin
 
-
     # =========================================================================
-    # Lógica de Multi-Tenant e Permissões (já estava no seu código, mantida)
+    # Lógica de Multi-Tenant e Permissões (já estava no seu código, mantida e ajustada)
     # =========================================================================
 
     # Sobrescreve o queryset para filtrar por estabelecimento do usuário logado
@@ -75,13 +97,16 @@ class ClienteAdmin(admin.ModelAdmin):
            hasattr(request.user, 'perfil') and \
            request.user.perfil.estabelecimento:
             user_estabelecimento = request.user.perfil.estabelecimento
+
             # Filtra o queryset do campo 'estabelecimento' para mostrar apenas o estabelecimento do usuário
             if 'estabelecimento' in form.base_fields:
                 form.base_fields['estabelecimento'].queryset = \
                     form.base_fields['estabelecimento'].queryset.filter(id=user_estabelecimento.id)
+                
                 # Preenche o valor inicial se for um novo objeto e o campo não tiver valor
                 if not obj:
                     form.base_fields['estabelecimento'].initial = user_estabelecimento.id
+                
                 # Desabilita botões de adicionar/alterar/deletar relacionamento para o campo estabelecimento
                 form.base_fields['estabelecimento'].widget.can_add_related = False
                 form.base_fields['estabelecimento'].widget.can_change_related = False
@@ -95,6 +120,3 @@ class ClienteAdmin(admin.ModelAdmin):
             if hasattr(request.user, 'perfil') and request.user.perfil.estabelecimento:
                 obj.estabelecimento = request.user.perfil.estabelecimento
         super().save_model(request, obj, form, change)
-
-# A linha abaixo foi removida ou comentada, pois o registro já é feito pelo @admin.register
-# admin.site.register(Cliente, ClienteAdmin)
